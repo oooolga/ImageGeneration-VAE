@@ -128,24 +128,68 @@ class VariationalAutoEncoder(VAEBase):
 
 
 class VariationalUpsampleEncoder(VAEBase):
-    def __init__(self, upsample):
+    def __init__(self, mode='bilinear'):
         super(VariationalUpsampleEncoder, self).__init__()
 
-        # build decoder here
-        if upsample == "nearest":
-            upsample_layer = nn.UpsamplingNearest2d
-        elif upsample == "bilinnear":
-            upsample_layer = nn.UpsamplingBilinear2d
-        else:
-            print("{} upsample is not implemented".format(upsample))
-            raise NotImplementedError
+        d = 128
+        self.up1 = nn.Upsample([5,5], mode=mode)
+        self.deconv1 = nn.Conv2d(100, d*8, 4, 1, 1)
+        self.deconv1_bn = nn.BatchNorm2d(d*8)
+
+        self.up2 = nn.Upsample([9,9], mode=mode)
+        self.deconv2 = nn.Conv2d(d*8, d*4, 4, 1, 1)
+        self.deconv2_bn = nn.BatchNorm2d(d*4)
+
+        self.up3 = nn.Upsample([17,17], mode=mode)
+        self.deconv3 = nn.Conv2d(d*4, d*2, 4, 1, 1)
+        self.deconv3_bn = nn.BatchNorm2d(d*2)
+
+        self.up4 = nn.Upsample([33,33], mode=mode)
+        self.deconv4 = nn.Conv2d(d*2, d, 4, 1, 1)
+        self.deconv4_bn = nn.BatchNorm2d(d)
+
+        self.up5 = nn.Upsample([65,65], mode=mode)
+        self.deconv5 = nn.Conv2d(d, 3, 4, 1, 1)
 
     def _decode(self, mean, logvar):
-        raise NotImplementedError
+        """
+        Decode from given mean and logvar of z.
+        :param mean: [bsz, 100]
+        :param logvar: [bsz, 100]
+        :return: [bsz, 3, 64, 64]
+        """
+        eps = torch.FloatTensor(mean.shape)
+        eps.normal_()
+        eps = Variable(eps)
+        if USE_CUDA:
+            eps = eps.cuda()
+
+        z = mean + eps * torch.exp(0.5*logvar)
+        z = z.view(z.size(0), 100, 1, 1)
+
+        import ipdb
+        # [1024, 4, 4]
+        tmp = self.deconv1_bn(self.deconv1(self.up1(z)))
+        tmp = F.leaky_relu(tmp)
+
+        # [512, 8, 8]
+        tmp = self.deconv2_bn(self.deconv2(self.up2(tmp)))
+        tmp = F.leaky_relu(tmp)
+
+        # [256, 16, 16]
+        tmp = self.deconv3_bn(self.deconv3(self.up3(tmp)))
+        tmp = F.leaky_relu(tmp)
+
+        # [128, 32, 32]
+        tmp = self.deconv4_bn(self.deconv4(self.up4(tmp)))
+        tmp = F.leaky_relu(tmp)
+
+        # [3, 64, 64]
+        tmp = self.deconv5(self.up5(tmp))
+        return F.sigmoid(tmp)
 
 
-
-model = VariationalAutoEncoder()
+model = VariationalUpsampleEncoder()
 imgs = torch.rand([2, 3, 64, 64])
 reconst_loss, kl_loss, reconst = model.inference(Variable(imgs))
 
