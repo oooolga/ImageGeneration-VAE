@@ -132,24 +132,24 @@ class VariationalUpsampleEncoder(VAEBase):
         super(VariationalUpsampleEncoder, self).__init__()
 
         d = 128
-        self.up1 = nn.Upsample([5,5], mode=mode)
-        self.deconv1 = nn.Conv2d(100, d*8, 4, 1, 1)
+        self.up1 = nn.Upsample(scale_factor=8, mode=mode)
+        self.deconv1 = nn.Conv2d(100, d*8, 4, 2, 1)
         self.deconv1_bn = nn.BatchNorm2d(d*8)
 
-        self.up2 = nn.Upsample([9,9], mode=mode)
-        self.deconv2 = nn.Conv2d(d*8, d*4, 4, 1, 1)
+        self.up2 = nn.Upsample(scale_factor=4, mode=mode)
+        self.deconv2 = nn.Conv2d(d*8, d*4, 4, 2, 1)
         self.deconv2_bn = nn.BatchNorm2d(d*4)
 
-        self.up3 = nn.Upsample([17,17], mode=mode)
-        self.deconv3 = nn.Conv2d(d*4, d*2, 4, 1, 1)
+        self.up3 = nn.Upsample(scale_factor=4, mode=mode)
+        self.deconv3 = nn.Conv2d(d*4, d*2, 4, 2, 1)
         self.deconv3_bn = nn.BatchNorm2d(d*2)
 
-        self.up4 = nn.Upsample([33,33], mode=mode)
-        self.deconv4 = nn.Conv2d(d*2, d, 4, 1, 1)
+        self.up4 = nn.Upsample(scale_factor=4, mode=mode)
+        self.deconv4 = nn.Conv2d(d*2, d, 4, 2, 1)
         self.deconv4_bn = nn.BatchNorm2d(d)
 
-        self.up5 = nn.Upsample([65,65], mode=mode)
-        self.deconv5 = nn.Conv2d(d, 3, 4, 1, 1)
+        self.up5 = nn.Upsample(scale_factor=4, mode=mode)
+        self.deconv5 = nn.Conv2d(d, 3, 4, 2, 1)
 
     def _decode(self, mean, logvar):
         """
@@ -189,7 +189,22 @@ class VariationalUpsampleEncoder(VAEBase):
         return F.sigmoid(tmp)
 
 
-model = VariationalUpsampleEncoder()
-imgs = torch.rand([2, 3, 64, 64])
-reconst_loss, kl_loss, reconst = model.inference(Variable(imgs))
+if __name__ == '__main__':
+    import numpy as np
+
+    def test_vae(vae):
+        num_params = 0
+        for param in vae.parameters():
+            num_params += np.prod([ sh for sh in param.shape])
+        imgs = torch.rand([2, 3, 64, 64])
+        _, _, reconst = vae.inference(Variable(imgs))
+        assert reconst.size(2) == 64
+        print("num_param: {}".format(num_params))
+
+    vae_nearest = VariationalUpsampleEncoder(mode='nearest')
+    test_vae(vae_nearest)
+    vae_bilinear = VariationalUpsampleEncoder(mode='bilinear')
+    test_vae(vae_bilinear)
+    vae = VariationalAutoEncoder()
+    test_vae(vae)
 
