@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+import pdb
 
 USE_CUDA = torch.cuda.is_available()
 Z_DIM = 1
@@ -209,7 +210,6 @@ class VariationalUpsampleEncoder(VAEBase):
         z = mean + eps * torch.exp(0.5*logvar)
         z = z.view(z.size(0), Z_DIM, 1, 1)
 
-        import ipdb
         # [1024, 4, 4]
         tmp = self.deconv1_bn(self.deconv1(self.up1(z)))
         tmp = F.leaky_relu(tmp)
@@ -239,19 +239,31 @@ if __name__ == '__main__':
         for param in vae.parameters():
             num_params += np.prod([ sh for sh in param.shape])
         imgs = torch.rand([2, 3, 64, 64])
+
+        if USE_CUDA:
+            imgs = imgs.cuda()
+
         _, _, reconst = vae.inference(Variable(imgs))
         assert reconst.size(2) == 64
         print("num_param: {}".format(num_params))
 
     vae_nearest = VariationalUpsampleEncoder(mode='nearest')
+    if USE_CUDA:
+        vae_nearest = vae_nearest.cuda()
     test_vae(vae_nearest)
     vae_bilinear = VariationalUpsampleEncoder(mode='bilinear')
+    if USE_CUDA:
+        vae_bilinear = vae_bilinear.cuda()
     test_vae(vae_bilinear)
     vae = VariationalAutoEncoder()
+    if USE_CUDA:
+        vae = vae.cuda()
     test_vae(vae)
 
     # two different inference
     imgs = torch.rand([3, 3, 64, 64])
+    if USE_CUDA:
+        imgs = imgs.cuda()
     reconst_loss, kl, reconst = vae.inference(Variable(imgs))
     lower_bound = -reconst_loss - kl
     print("reconst_loss {}, kl {}, lower bound {}".format(
