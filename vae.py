@@ -64,9 +64,9 @@ class VAEBase(nn.Module):
         :param imgs: the images
         :param k: number of sampling from posterior
         :return:
-            lower_bounds: a list of lower bounds.
-            kl: the estimated KL(q(z|x) | p(z))
-            reconst_loss: the estimated reconstruction loss
+            lower_bounds: a list of lower bounds. [bsz, k]
+            kl: the estimated KL(q(z|x) | p(z)). [bsz, 1]
+            reconst_loss: the estimated reconstruction loss [bsz, 1]
         """
         mu, logvar = self._encode(imgs)
         sigma = torch.exp(0.5*logvar)
@@ -96,6 +96,7 @@ class VAEBase(nn.Module):
             lower_bound = log_x_cond_z + log_prior_minus_pos
             lower_bounds.append(lower_bound)
 
+        lower_bounds = torch.stack(lower_bounds, 1)
         return reconst_loss, kl, lower_bounds
 
     def inference(self, imgs):
@@ -250,11 +251,11 @@ if __name__ == '__main__':
     test_vae(vae)
 
     # two different inference
-    imgs = torch.rand([1, 3, 64, 64])
+    imgs = torch.rand([3, 3, 64, 64])
     reconst_loss, kl, reconst = vae.inference(Variable(imgs))
+    lower_bound = -reconst_loss - kl
     print("reconst_loss {}, kl {}".format(reconst_loss[0].data[0], kl[0].data[0]))
-    reconst_loss, kl, lower_bounds = vae.importance_inference(Variable(imgs), k=1)
+
+    reconst_loss, kl, lower_bounds = vae.importance_inference(Variable(imgs), k=5)
     print("reconst_loss {}, kl {}".format(reconst_loss[0].data[0], kl[0].data[0]))
-    import ipdb
-    ipdb.set_trace()
 
