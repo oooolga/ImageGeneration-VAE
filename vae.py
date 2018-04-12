@@ -254,8 +254,13 @@ if __name__ == '__main__':
     imgs = torch.rand([3, 3, 64, 64])
     reconst_loss, kl, reconst = vae.inference(Variable(imgs))
     lower_bound = -reconst_loss - kl
-    print("reconst_loss {}, kl {}".format(reconst_loss[0].data[0], kl[0].data[0]))
+    print("reconst_loss {}, kl {}, lower bound {}".format(
+        reconst_loss[0].data[0], kl[0].data[0], lower_bound[0].data[0]
+    ))
 
-    reconst_loss, kl, lower_bounds = vae.importance_inference(Variable(imgs), k=5)
-    print("reconst_loss {}, kl {}".format(reconst_loss[0].data[0], kl[0].data[0]))
+    reconst_loss, kl, lower_bounds = vae.importance_inference(Variable(imgs), k=50)
+    monte_carlo_lower_bound = torch.mean(lower_bounds, dim=-1) # note this is not what happen in training
+    print("reconst_loss {}, kl {}, lower bound {}".format(
+        reconst_loss[0].data[0], kl[0].data[0], monte_carlo_lower_bound[0].data[0]
+    ))
 
