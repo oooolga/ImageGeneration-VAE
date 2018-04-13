@@ -39,7 +39,7 @@ def get_model(mode):
     if mode == 'deconvolution':
         model = VariationalAutoEncoder()
     else:
-        model = VariationalUpsampleEncoder(mode='bilinear')
+        model = VariationalUpsampleEncoder(mode=mode)
 
     if torch.cuda.is_available():
         model = model.cuda()

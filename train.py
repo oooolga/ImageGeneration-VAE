@@ -58,7 +58,7 @@ def train(train_loader, model, optimizer, importance_flag, k=None):
         loss.backward()
         optimizer.step()
 
-        print('loss={}'.format(loss[0].data[0]))
+        print('loss={:.2f}'.format(loss[0].data[0]))
 
 def test(test_loader, model):
 
