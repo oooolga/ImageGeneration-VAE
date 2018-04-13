@@ -21,16 +21,19 @@ def load_data(args):
 
     train_loader = torch.utils.data.DataLoader(train_dset,
     										   batch_size=args.batch_size,
-    										   shuffle=True)
+    										   shuffle=True,
+                                               drop_last=True)
     valid_loader = torch.utils.data.DataLoader(valid_dset,
                                                batch_size=args.batch_size,
-                                               shuffle=True)
+                                               shuffle=True,
+                                               drop_last=True)
 
     test_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'test'),
     								 transform=transform)
     test_loader = torch.utils.data.DataLoader(train_dset,
     										  batch_size=args.batch_size,
-    										  shuffle=False)
+    										  shuffle=False,
+                                              drop_last=True)
 
     print('Finished loading data...')
     return train_loader, valid_loader, test_loader
