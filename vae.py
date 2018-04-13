@@ -247,30 +247,27 @@ if __name__ == '__main__':
         assert reconst.size(2) == 64
         print("num_param: {}".format(num_params))
 
-    vae_nearest = VariationalUpsampleEncoder(mode='nearest')
-    if USE_CUDA:
-        vae_nearest = vae_nearest.cuda()
-    test_vae(vae_nearest)
-    vae_bilinear = VariationalUpsampleEncoder(mode='bilinear')
-    if USE_CUDA:
-        vae_bilinear = vae_bilinear.cuda()
-    test_vae(vae_bilinear)
-    vae = VariationalAutoEncoder()
-    if USE_CUDA:
-        vae = vae.cuda()
-    test_vae(vae)
+    vae_models = {'nearest': VariationalUpsampleEncoder(mode='nearest'),
+                  'bilinear': VariationalUpsampleEncoder(mode='bilinear'),
+                  'original': VariationalAutoEncoder()}
+
+    for model in vae_models:
+        if USE_CUDA:
+            vae_models[model] = vae_models[model].cuda()
+        test_vae(vae_models[model])
 
     # two different inference
     imgs = torch.rand([3, 3, 64, 64])
     if USE_CUDA:
         imgs = imgs.cuda()
-    reconst_loss, kl, reconst = vae.inference(Variable(imgs))
+
+    reconst_loss, kl, reconst = vae_models['original'].inference(Variable(imgs))
     lower_bound = -reconst_loss - kl
     print("reconst_loss {}, kl {}, lower bound {}".format(
         reconst_loss[0].data[0], kl[0].data[0], lower_bound[0].data[0]
     ))
 
-    reconst_loss, kl, lower_bounds = vae.importance_inference(Variable(imgs), k=50)
+    reconst_loss, kl, lower_bounds = vae_models['original'].importance_inference(Variable(imgs), k=50)
     monte_carlo_lower_bound = torch.mean(lower_bounds, dim=-1) # note this is not what happen in training
     print("reconst_loss {}, kl {}, lower bound {}".format(
         reconst_loss[0].data[0], kl[0].data[0], monte_carlo_lower_bound[0].data[0]
