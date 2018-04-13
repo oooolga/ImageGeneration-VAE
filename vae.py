@@ -32,6 +32,7 @@ class VAEBase(nn.Module):
         # loss
         self.bce = nn.BCELoss(size_average=False)
 
+
     def _encode(self, img):
         """
         https://github.com/znxlwm/pytorch-MNIST-CelebA-GAN-DCGAN/blob/master/pytorch_CelebA_DCGAN.py
@@ -59,17 +60,6 @@ class VAEBase(nn.Module):
         """
         raise NotImplementedError
 
-    def reconstruct(self, imgs):
-        """
-        Doing a reconstruction
-        :param imgs: [bsz, 3, 64, 64]
-        :return:
-            reconst: [bsz, 3, 64, 64]
-        """
-        mu, logvar = self._encode(imgs)
-        reconst, _ = self._decode(mu, logvar)
-        return reconst
-
     def sample_images(self, mu=None, logvar=None, batch_size=100):
         """
         Sample images from the model. If mu and logvar is given than sample from that.
@@ -91,6 +81,12 @@ class VAEBase(nn.Module):
         return self._decode(mu, logvar)
 
     def reconstruction_sample(self, imgs):
+        """
+        Doing a reconstruction
+        :param imgs: [bsz, 3, 64, 64]
+        :return:
+            reconst: [bsz, 3, 64, 64]
+        """
         mu, logvar = self._encode(imgs)
         reconst, _ = self._decode(mu, logvar)
         return reconst

@@ -22,7 +22,7 @@ parser.add_argument('--operation', type=str, default='deconvolution',
                     help='[deconvolution|nearest|bilinear]')
 parser.add_argument('--k', type=int, default=0,
                     help="if 0 then use pure inference else use importance weighted inference")
-parser.add_argument('--lr', type=float, default=1e-3,
+parser.add_argument('--lr', type=float, default=1e-4,
                     help='learning rate')
 parser.add_argument('--momentum', type=float, default=0.5,
                     help='momentum')
