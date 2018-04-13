@@ -97,12 +97,14 @@ def sample_visualization(data_loader, model, im_name, sample_size):
 
     for imgs, _ in data_loader:
         imgs = Variable(imgs).cuda() if USE_CUDA else Variable(imgs)
+        imgs = imgs[:sample_size]
         break
 
     reconst = model.reconstruction_sample(imgs)
-    reconst = reconst[:sample_size]
 
     visualize_kernel(reconst, im_name=im_name, im_scale=1.0,
+                     model_name=model_name, result_path=result_path)
+    visualize_kernel(imgs, im_name=im_name[:-4]+'_org.jpg', im_scale=1.0,
                      model_name=model_name, result_path=result_path)
 
 def weight_init(m):
@@ -135,15 +137,15 @@ if __name__ == '__main__':
         print('|\t\tTrain:')
         train(train_loader, model, optimizer, args)
 
+        sample_visualization(train_loader, model, 'epoch_{}_train.jpg'.format(epoch_i),
+                             args.sample_size)
+        sample_visualization(test_loader, model, 'epoch_{}_test.jpg'.format(epoch_i),
+                             args.sample_size)
+
         print('|\t\tEval train:')
         avg_train_loss = eval(train_loader, model, args.importance_weight)
         print('|\tTrain loss={}\n'.format(avg_train_loss))
         print('|\t\tEval test:')
         avg_test_loss = eval(test_loader, model, args.importance_weight)
         print('|\tTest loss={}\n'.format(avg_test_loss))
-
-        sample_visualization(train_loader, model, 'epoch_{}_train.jpg'.format(epoch_i),
-                             args.sample_size)
-        sample_visualization(test_loader, model, 'epoch_{}_test.jpg'.format(epoch_i),
-                             args.sample_size)
 
