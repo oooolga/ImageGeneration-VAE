@@ -79,6 +79,12 @@ class VAEBase(nn.Module):
 
         return self._decode(mu, logvar)
 
+    def reconstruction_sample(self, imgs):
+        mu, logvar = self._encode(imgs)
+        reconst, _ = self._decode(mu, logvar)
+        return reconst
+
+
     def importance_inference(self, imgs, k=50):
         """
         Perform an importance weighted lower bound estimate.
