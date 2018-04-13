@@ -5,7 +5,7 @@ from torch.autograd import Variable
 import pdb
 
 USE_CUDA = torch.cuda.is_available()
-Z_DIM = 1
+Z_DIM = 100
 
 class VAEBase(nn.Module):
     """
@@ -59,15 +59,37 @@ class VAEBase(nn.Module):
         """
         raise NotImplementedError
 
+    def sample_images(self, mu=None, logvar=None, batch_size=100):
+        """
+        Sample images from the model. If mu and logvar is given than sample from that.
+        If not sample freely with batch_size
+        :param mu: the mean of z. [bsz, Z_DIM]
+        :param logvar: logvar of z. [bsz, Z_DIM]
+        :param batch_size: an int
+        :return: reconst [bsz, 3, 64, 64]
+        """
+
+        # sample from prior
+        if mu is None:
+            mu = Variable(torch.zeros(batch_size, Z_DIM), volatile=True)
+            logvar = Variable(torch.zeros(batch_size, Z_DIM), volatile=True)
+            if USE_CUDA:
+                mu = mu.cuda()
+                logvar = logvar.cuda()
+
+        return self._decode(mu, logvar)
+
     def importance_inference(self, imgs, k=50):
         """
         Perform an importance weighted lower bound estimate.
+        return a monte carlo estimate of KL(q(z|x) | p(z)), monte carlo estimate of E_q(z|x) log p(x|z),
+        and lower bound of each sample
         :param imgs: the images
         :param k: number of sampling from posterior
         :return:
+            mc_KL_q_p: [bsz, 1]
+            mc_log_x_cond_z: [bsz, 1]
             lower_bounds: a list of lower bounds. [bsz, k]
-            kl: the estimated KL(q(z|x) | p(z)). [bsz, 1]
-            reconst_loss: the estimated reconstruction loss [bsz, 1]
         """
         mu, logvar = self._encode(imgs)
         sigma = torch.exp(0.5*logvar)
@@ -76,52 +98,63 @@ class VAEBase(nn.Module):
         lower_bounds = [] # used for backward
 
         # used for display average result
-        kl = 0
-        reconst_loss = 0
+        mc_KL_q_p = 0
+        mc_log_x_cond_z = 0
         for _ in range(k):
+            # perform decoding
             reconst, eps = self._decode(mu, logvar)
 
             # log p(x | z)
-            log_x_cond_z = -self.bce(reconst, imgs)
-            reconst_loss += -log_x_cond_z / k
+            log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(reconst)
+            # sum over pixels and each channel
+            log_x_cond_z = log_x_cond_z.view(log_x_cond_z.size(0), -1)
+            log_x_cond_z = torch.sum(log_x_cond_z, dim=1)
+            mc_log_x_cond_z += log_x_cond_z / k
 
             # log p(z) - log q(z | x) = 0.5*(-mu^2 - sigma^2 eps^2 - 2*mu*sigma*eps + \
             #                   log sigma^2 + eps^2)
-            # this is the sample estimate of KL loss.
+            # this is the sample estimate of KL.
             log_prior_minus_pos = 0.5*(-mu.pow(2) - sigma.pow(2)*eps.pow(2) - 2*mu*sigma*eps + logvar + eps.pow(2))
-            log_prior_minus_pos = torch.sum(log_prior_minus_pos, dim=-1)
-
-            # add the sample estimate of KL(q(z|x) | p(z))
-            kl += -log_prior_minus_pos / k
+            log_prior_minus_pos = torch.sum(log_prior_minus_pos, dim=1)
+            KL_q_p = -log_prior_minus_pos
+            mc_KL_q_p += KL_q_p / k
 
             # log w
             lower_bound = log_x_cond_z + log_prior_minus_pos
             lower_bounds.append(lower_bound)
 
         lower_bounds = torch.stack(lower_bounds, 1)
-        return reconst_loss, kl, lower_bounds
+        return mc_KL_q_p, mc_log_x_cond_z, lower_bounds
 
     def inference(self, imgs):
         """
-        perform an enc and dec, getting the reconst loss, kl loss and reconstruction.
+        perform an enc and dec, getting the lower bound, log p(x|z) and KL(q(z|x)|p(z)).
+        Also return reconstruction.
         Use an analytical form of KL the same as original vae paper.
         :param imgs: [bsz, 3, 64, 64]
         :return:
-            reconst_loss: [1]
-            kl: [1]
+            KL_q_p: [bsz, 1]
+            log_x_cond_z: [bsz, 1]
+            lower_bound: [bsz, 1] (log_x_cond_z - KL_q_p)
             reconst: [bsz, 3, 64, 64]
         """
         mu, logvar = self._encode(imgs)
         reconst, _ = self._decode(mu, logvar)
 
-        # binary cross entropy loss
-        reconst_loss = self.bce(reconst, imgs)
+        # log p(x | z)
+        log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(reconst)
+        # sum over pixels and each channel
+        log_x_cond_z = log_x_cond_z.view(log_x_cond_z.size(0), -1)
+        log_x_cond_z = torch.sum(log_x_cond_z, dim=1)
 
         # KL(q(z|x) | p(z))
         # -0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        kl = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        # sum over dimension
+        KL_q_p = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1)
 
-        return reconst_loss, kl, reconst
+        # lower bound
+        lower_bound = log_x_cond_z - KL_q_p
+        return KL_q_p, log_x_cond_z, lower_bound, reconst
 
 
 
@@ -246,8 +279,11 @@ if __name__ == '__main__':
         if USE_CUDA:
             imgs = imgs.cuda()
 
-        _, _, reconst = vae.inference(Variable(imgs))
+        log_x_cond_z, kl, lower_bound, reconst = vae.inference(Variable(imgs))
         assert reconst.size(2) == 64
+        assert log_x_cond_z.size(0) == 2
+        assert kl.size(0) == 2
+        assert lower_bound.size(0) == 2
         print("num_param: {}".format(num_params))
 
     vae_models = {'nearest': VariationalUpsampleEncoder(mode='nearest'),
@@ -264,15 +300,17 @@ if __name__ == '__main__':
     if USE_CUDA:
         imgs = imgs.cuda()
 
-    reconst_loss, kl, reconst = vae_models['deconvolution'].inference(Variable(imgs))
-    lower_bound = -reconst_loss - kl
+    print("monte carlo KL should be close to analytic KL")
+    kl, log_x_cond_z, lower_bound, reconst = vae_models['deconvolution'].inference(Variable(imgs))
     print("reconst_loss {}, kl {}, lower bound {}".format(
-        reconst_loss[0].data[0], kl[0].data[0], lower_bound[0].data[0]
+        -log_x_cond_z[0].data[0], kl[0].data[0], lower_bound[0].data[0]
     ))
 
-    reconst_loss, kl, lower_bounds = vae_models['deconvolution'].importance_inference(Variable(imgs), k=50)
+    mc_kl, mc_log_x_cond_z, lower_bounds = vae_models['deconvolution'].importance_inference(Variable(imgs), k=50)
     monte_carlo_lower_bound = torch.mean(lower_bounds, dim=-1) # note this is not what happen in training
     print("reconst_loss {}, kl {}, lower bound {}".format(
-        reconst_loss[0].data[0], kl[0].data[0], monte_carlo_lower_bound[0].data[0]
+        -mc_log_x_cond_z[0].data[0], mc_kl[0].data[0], monte_carlo_lower_bound[0].data[0]
     ))
 
+    # test sampling
+    vae_models['deconvolution'].sample_images()
