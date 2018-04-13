@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from vae import VariationalAutoEncoder, VariationalUpsampleEncoder, USE_CUDA
 import numpy as np
 import torch.nn.functional as F
@@ -109,15 +110,28 @@ def get_batch_loss(model, imgs, k=0):
     :param imgs: [bsz, 3, 64, 64]
     :param k: if 0 use pure inference else use importance weight inference
     :return:
-        loss: [1]
-        KL: [1]
-        reconst_loss [1]
+        loss: [1] batch average loss. For importance weight, this is weighted average
+        kl: [1] a KL value to be displayed
+        reconst_loss [1] a reconstruction loss to be displayed
     """
     if k == 0:
         kl, log_x_cond_z, lower_bound, _ = model.inference(imgs)
-        return -torch.mean(lower_bound), torch.mean(kl), -torch.mean(log_x_cond_z)
+        loss = -torch.mean(lower_bound)
+        kl = torch.mean(kl)
+        reconst_loss = -torch.mean(log_x_cond_z)
     else:
-        raise NotImplementedError
+        mc_kl, mc_log_x_cond_z, lower_bounds = model.importance_inference(imgs, k)
+        kl = torch.mean(mc_kl)
+        reconst_loss = -torch.mean(mc_log_x_cond_z)
+
+        # bp_weights [bsz, k] and detach
+        bp_weights = F.softmax(lower_bounds, dim=1).detach()
+        # weighted average over lower bounds (log w)
+        weighted_lower_bounds = torch.mean(lower_bounds * bp_weights, dim=1)
+        loss = -torch.mean(weighted_lower_bounds)
+
+    return loss, kl, reconst_loss
+
 
 
 def print_all_settings(args, model):
@@ -125,7 +139,6 @@ def print_all_settings(args, model):
     print('Batch size:\t\t{}'.format(args.batch_size))
     print('Total epochs:\t\t{}'.format(args.epochs))
     print('Operation:\t\t{}'.format(args.operation))
-    print('Importance weight:\t{}'.format(args.importance_weight))
     print('k-sample:\t\t{}\n'.format(args.k))
     print('Learning rate:\t\t{}\n'.format(args.lr))
 
