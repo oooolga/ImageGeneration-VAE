@@ -7,6 +7,7 @@ import numpy as np
 from torch.autograd import Variable
 import torch.optim as optim
 import pdb
+import time
 
 USE_CUDA = torch.cuda.is_available()
 
@@ -46,6 +47,7 @@ def print_all_settings(args, model):
 def train(train_loader, model, optimizer, importance_flag, k=None):
 
     model.train()
+    start = time.time()
     for batch_idx, (imgs, _) in enumerate(train_loader):
 
         imgs = Variable(imgs).cuda() if USE_CUDA else Variable(imgs)
@@ -63,13 +65,14 @@ def train(train_loader, model, optimizer, importance_flag, k=None):
         optimizer.step()
 
         if (batch_idx+1) % print_freq == 0:
-            print('|\t\tbatch #:{}\tloss={:.2f}'.format(batch_idx+1,
-                                                        loss[0].data[0]))
+            print('|\t\tbatch #:{}\tloss={:.2f}\tuse {:.2f} sec'.format(
+                batch_idx+1, loss[0].data[0], time.time()-start))
+            start = time.time()
 
 def eval(data_loader, model, importance_flag):
 
     model.eval()
-
+    start = time.time()
     total_loss = 0
     num_data = 0
     for batch_idx, (imgs, _) in enumerate(data_loader):
@@ -86,8 +89,9 @@ def eval(data_loader, model, importance_flag):
         total_loss += loss[0].data[0]
 
         if (batch_idx+1) % print_freq == 0:
-            print('|\t\tbatch #:{}\tloss={:.2f}'.format(batch_idx+1,
-                                                        total_loss/(batch_idx+1)))
+            print('|\t\tbatch #:{}\tloss={:.2f}\tuse {:.2f} sec'.format(
+                batch_idx+1, total_loss/(batch_idx+1), time.time()-start))
+            start = time.time()
 
     avg_loss = total_loss/len(data_loader)
     return avg_loss
