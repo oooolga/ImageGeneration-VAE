@@ -54,11 +54,10 @@ def train(train_loader, model, optimizer, importance_flag, k=None):
 
         if importance_flag:
             # to do: lower bound
-            reconst_loss, kl, lower_bounds = model.importance_inference(imgs, k=k)
+            raise NotImplementedError
         else:
-            reconst_loss, kl, reconst = model.inference(imgs)
-            lower_bound = -reconst_loss - kl
-            loss = -lower_bound
+            kl, log_x_cond_z, lower_bound, _ = model.inference(imgs)
+            loss = -torch.mean(lower_bound)
 
         loss.backward()
         optimizer.step()
@@ -79,20 +78,18 @@ def eval(data_loader, model, importance_flag):
 
         if importance_flag:
             # to do: lower bound
-            reconst_loss, kl, lower_bounds = model.importance_inference(imgs, k=k)
+            raise NotImplementedError
         else:
-            reconst_loss, kl, reconst = model.inference(imgs)
-            lower_bound = -reconst_loss - kl
-            loss = -lower_bound
+            kl, log_x_cond_z, lower_bound, _ = model.inference(imgs)
+            loss = -torch.sum(lower_bound)
 
-        total_loss += loss[0].data[0] / batch_size
+        total_loss += loss[0].data[0]
 
         if (batch_idx+1) % print_freq == 0:
             print('|\t\tbatch #:{}\tloss={:.2f}'.format(batch_idx+1,
                                                         total_loss/(batch_idx+1)))
 
     avg_loss = total_loss/len(data_loader)
-
     return avg_loss
 
 
