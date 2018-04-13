@@ -59,6 +59,17 @@ class VAEBase(nn.Module):
         """
         raise NotImplementedError
 
+    def reconstruct(self, imgs):
+        """
+        Doing a reconstruction
+        :param imgs: [bsz, 3, 64, 64]
+        :return:
+            reconst: [bsz, 3, 64, 64]
+        """
+        mu, logvar = self._encode(imgs)
+        reconst, _ = self._decode(mu, logvar)
+        return reconst
+
     def sample_images(self, mu=None, logvar=None, batch_size=100):
         """
         Sample images from the model. If mu and logvar is given than sample from that.
@@ -320,3 +331,7 @@ if __name__ == '__main__':
 
     # test sampling
     vae_models['deconvolution'].sample_images()
+
+    # test reconst
+    reconst = vae_models['deconvolution'].reconstruct(Variable(imgs))
+
