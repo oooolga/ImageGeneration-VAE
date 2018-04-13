@@ -85,7 +85,8 @@ class VAEBase(nn.Module):
             log_x_cond_z = -self.bce(reconst, imgs)
             reconst_loss += -log_x_cond_z / k
 
-            # log p(z) - log q(z | x) = 0.5*(-mu^2 - sigma^2 eps^2 - 2*mu*sigma*eps + log sigma^2 + eps^2)
+            # log p(z) - log q(z | x) = 0.5*(-mu^2 - sigma^2 eps^2 - 2*mu*sigma*eps + \
+            #                   log sigma^2 + eps^2)
             # this is the sample estimate of KL loss.
             log_prior_minus_pos = 0.5*(-mu.pow(2) - sigma.pow(2)*eps.pow(2) - 2*mu*sigma*eps + logvar + eps.pow(2))
             log_prior_minus_pos = torch.sum(log_prior_minus_pos, dim=-1)
@@ -106,8 +107,8 @@ class VAEBase(nn.Module):
         Use an analytical form of KL the same as original vae paper.
         :param imgs: [bsz, 3, 64, 64]
         :return:
-            reconst_loss: [bsz, 1]
-            kl: [bsz, 1]
+            reconst_loss: [1]
+            kl: [1]
             reconst: [bsz, 3, 64, 64]
         """
         mu, logvar = self._encode(imgs)
@@ -118,7 +119,7 @@ class VAEBase(nn.Module):
 
         # KL(q(z|x) | p(z))
         # -0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        kl = -torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=-1)
+        kl = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
         return reconst_loss, kl, reconst
 
@@ -151,12 +152,13 @@ class VariationalAutoEncoder(VAEBase):
         :param logvar: [bsz, Z_DIM]
         :return: [bsz, 3, 64, 64]
         """
+
+        # reparametric trick
         eps = torch.FloatTensor(mean.shape)
         eps.normal_()
         eps = Variable(eps)
         if USE_CUDA:
             eps = eps.cuda()
-
         z = mean + eps * torch.exp(0.5*logvar)
         z = z.view(z.size(0), Z_DIM, 1, 1)
 
@@ -201,12 +203,13 @@ class VariationalUpsampleEncoder(VAEBase):
         :param logvar: [bsz, Z_DIM]
         :return: [bsz, 3, 64, 64]
         """
+
+        # reparametric trick
         eps = torch.FloatTensor(mean.shape)
         eps.normal_()
         eps = Variable(eps)
         if USE_CUDA:
             eps = eps.cuda()
-
         z = mean + eps * torch.exp(0.5*logvar)
         z = z.view(z.size(0), Z_DIM, 1, 1)
 
@@ -249,7 +252,7 @@ if __name__ == '__main__':
 
     vae_models = {'nearest': VariationalUpsampleEncoder(mode='nearest'),
                   'bilinear': VariationalUpsampleEncoder(mode='bilinear'),
-                  'original': VariationalAutoEncoder()}
+                  'deconvolution': VariationalAutoEncoder()}
 
     for model in vae_models:
         if USE_CUDA:
@@ -261,13 +264,13 @@ if __name__ == '__main__':
     if USE_CUDA:
         imgs = imgs.cuda()
 
-    reconst_loss, kl, reconst = vae_models['original'].inference(Variable(imgs))
+    reconst_loss, kl, reconst = vae_models['deconvolution'].inference(Variable(imgs))
     lower_bound = -reconst_loss - kl
     print("reconst_loss {}, kl {}, lower bound {}".format(
         reconst_loss[0].data[0], kl[0].data[0], lower_bound[0].data[0]
     ))
 
-    reconst_loss, kl, lower_bounds = vae_models['original'].importance_inference(Variable(imgs), k=50)
+    reconst_loss, kl, lower_bounds = vae_models['deconvolution'].importance_inference(Variable(imgs), k=50)
     monte_carlo_lower_bound = torch.mean(lower_bounds, dim=-1) # note this is not what happen in training
     print("reconst_loss {}, kl {}, lower bound {}".format(
         reconst_loss[0].data[0], kl[0].data[0], monte_carlo_lower_bound[0].data[0]

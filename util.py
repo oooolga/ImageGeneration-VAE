@@ -1,4 +1,5 @@
 import torch
+from vae import *
 
 def load_data(args):
 
@@ -33,4 +34,14 @@ def load_data(args):
 
     print('Finished loading data...')
     return train_loader, valid_loader, test_loader
+
+def get_model(mode):
+    if mode == 'deconvolution':
+        model = VariationalAutoEncoder()
+    else:
+        model = VariationalUpsampleEncoder(mode='bilinear')
+
+    if torch.cuda.is_available():
+        model = model.cuda()
+    return model
  

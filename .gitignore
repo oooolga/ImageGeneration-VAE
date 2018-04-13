@@ -1,1 +1,4 @@
 .idea
+__pycache__
+data/
+celeba_hw4.zip
