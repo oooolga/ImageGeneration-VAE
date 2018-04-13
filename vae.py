@@ -29,10 +29,6 @@ class VAEBase(nn.Module):
         self.fc_mu = nn.Linear(d*16, Z_DIM)
         self.fc_logvar = nn.Linear(d*16, Z_DIM)
 
-        # loss
-        self.bce = nn.BCELoss(size_average=False)
-
-
     def _encode(self, img):
         """
         https://github.com/znxlwm/pytorch-MNIST-CelebA-GAN-DCGAN/blob/master/pytorch_CelebA_DCGAN.py

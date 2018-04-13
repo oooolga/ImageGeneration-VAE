@@ -3,6 +3,7 @@ from util import get_model, load_data, print_all_settings, get_batch_loss, visua
 from vae import USE_CUDA
 from torch.autograd import Variable
 import torch.optim as optim
+import torch
 import pdb
 import time
 import os
@@ -104,10 +105,19 @@ def sample_visualization(data_loader, model, im_name, sample_size):
     visualize_kernel(reconst, im_name=im_name, im_scale=1.0,
                      model_name=model_name, result_path=result_path)
 
+def weight_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        m.weight.data.normal_(0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        m.weight.data.normal_(1.0, 0.02)
+        m.bias.data.fill_(0)
+
 
 if __name__ == '__main__':
 
     model = get_model(args.operation)
+    model.apply(weight_init)
 
     if not os.path.exists(args.result_path):
         os.makedirs(args.result_path)
