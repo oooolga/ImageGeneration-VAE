@@ -1,6 +1,7 @@
 import torch
-from vae import *
-
+from vae import VariationalAutoEncoder, VariationalUpsampleEncoder, USE_CUDA
+import numpy as np
+import torch.nn.functional as F
 import numpy as np
 import argparse, os
 import copy, scipy
@@ -9,6 +10,7 @@ import scipy.misc
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+
 
 def load_data(args):
 
@@ -46,6 +48,7 @@ def load_data(args):
     print('Finished loading data...')
     return train_loader, valid_loader, test_loader
 
+
 def get_model(mode):
     if mode == 'deconvolution':
         model = VariationalAutoEncoder()
@@ -56,13 +59,15 @@ def get_model(mode):
         model = model.cuda()
     return model
 
+
 def factorization(n):
     from math import sqrt
     for i in range(int(sqrt(float(n))), 0, -1):
         if n % i == 0:
             if i == 1: print('Who would enter a prime number of filters')
             return int(n / i), i
- 
+
+
 def visualize_kernel(kernel_tensor, im_name='conv1_kernel.jpg', pad=1, im_scale=1.0,
                      model_name='', rescale=True, result_path='.'):
 
@@ -95,3 +100,36 @@ def visualize_kernel(kernel_tensor, im_name='conv1_kernel.jpg', pad=1, im_scale=
     kernel_im = scipy.misc.imresize(kernel_im, im_scale, 'nearest')
     print('|\tSaving {}...'.format(os.path.join(result_path, model_name+'_'+im_name)))
     plt.imsave(os.path.join(result_path, model_name+'_'+im_name), kernel_im, origin='upper')
+
+
+def get_batch_loss(model, imgs, k=0):
+    """
+    Get a batch average loss, KL, and reconst loss
+    :param model: the model
+    :param imgs: [bsz, 3, 64, 64]
+    :param k: if 0 use pure inference else use importance weight inference
+    :return:
+        loss: [1]
+        KL: [1]
+        reconst_loss [1]
+    """
+    if k == 0:
+        kl, log_x_cond_z, lower_bound, _ = model.inference(imgs)
+        return -torch.mean(lower_bound), torch.mean(kl), -torch.mean(log_x_cond_z)
+    else:
+        raise NotImplementedError
+
+
+def print_all_settings(args, model):
+
+    print('Batch size:\t\t{}'.format(args.batch_size))
+    print('Total epochs:\t\t{}'.format(args.epochs))
+    print('Operation:\t\t{}'.format(args.operation))
+    print('Importance weight:\t{}'.format(args.importance_weight))
+    print('k-sample:\t\t{}\n'.format(args.k))
+    print('Learning rate:\t\t{}\n'.format(args.lr))
+
+    num_params = 0
+    for param in model.parameters():
+        num_params += np.prod([ sh for sh in param.shape])
+    print('Model capacity:\t\t{}\n'.format(num_params))
