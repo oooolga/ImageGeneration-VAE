@@ -64,7 +64,7 @@ def train(train_loader, model, optimizer, importance_flag, k=None):
 
         if (batch_idx+1) % print_freq == 0:
             print('|\t\tbatch #:{}\tloss={:.2f}'.format(batch_idx+1,
-                                                        loss[0].data[0]/batch_size))
+                                                        loss[0].data[0]))
 
 def eval(data_loader, model, importance_flag):
 
