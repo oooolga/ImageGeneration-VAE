@@ -143,9 +143,9 @@ if __name__ == '__main__':
                              args.sample_size)
 
         print('|\t\tEval train:')
-        avg_train_loss = eval(train_loader, model, args.importance_weight)
+        avg_train_loss = eval(train_loader, model, args)
         print('|\tTrain loss={}\n'.format(avg_train_loss))
         print('|\t\tEval test:')
-        avg_test_loss = eval(test_loader, model, args.importance_weight)
+        avg_test_loss = eval(test_loader, model, args)
         print('|\tTest loss={}\n'.format(avg_test_loss))
 
