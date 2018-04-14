@@ -20,7 +20,6 @@ def load_data(args):
 
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
     train_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'train'),
                                       transform=transform)
