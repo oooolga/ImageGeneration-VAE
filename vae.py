@@ -29,9 +29,6 @@ class VAEBase(nn.Module):
         self.fc_mu = nn.Linear(d*16, Z_DIM)
         self.fc_logvar = nn.Linear(d*16, Z_DIM)
 
-        # loss
-        self.bce = nn.BCELoss(size_average=False)
-
     def _encode(self, img):
         """
         https://github.com/znxlwm/pytorch-MNIST-CelebA-GAN-DCGAN/blob/master/pytorch_CelebA_DCGAN.py
@@ -122,7 +119,7 @@ class VAEBase(nn.Module):
             reconst, eps = self._decode(mu, logvar)
 
             # log p(x | z)
-            log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(reconst)
+            log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(1-reconst)
             # sum over pixels and each channel
             log_x_cond_z = log_x_cond_z.view(log_x_cond_z.size(0), -1)
             log_x_cond_z = torch.sum(log_x_cond_z, dim=1)
@@ -160,7 +157,7 @@ class VAEBase(nn.Module):
         reconst, _ = self._decode(mu, logvar)
 
         # log p(x | z)
-        log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(reconst)
+        log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(1-reconst)
         # sum over pixels and each channel
         log_x_cond_z = log_x_cond_z.view(log_x_cond_z.size(0), -1)
         log_x_cond_z = torch.sum(log_x_cond_z, dim=1)

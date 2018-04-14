@@ -14,7 +14,7 @@ parser.add_argument('--result_path', type=str, default='./result')
 parser.add_argument('--model_name', type=str, default='deconvolution')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--sample_size', type=int, default=36, help='sample size')
-parser.add_argument('--epochs', type=int, default=1,
+parser.add_argument('--epochs', type=int, default=10,
                     help='total epochs')
 parser.add_argument('--print_freq', type=int, default=10,
                     help='print frequency')
@@ -23,7 +23,7 @@ parser.add_argument('--operation', type=str, default='deconvolution',
                     help='[deconvolution|nearest|bilinear]')
 parser.add_argument('--k', type=int, default=0,
                     help="if 0 then use pure inference else use importance weighted inference")
-parser.add_argument('--lr', type=float, default=1e-4,
+parser.add_argument('--lr', type=float, default=3e-4,
                     help='learning rate')
 parser.add_argument('--momentum', type=float, default=0.5,
                     help='momentum')
