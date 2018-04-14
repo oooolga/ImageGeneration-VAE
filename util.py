@@ -1,9 +1,9 @@
 import torch
 import torch.nn.functional as F
+import torch.optim as optim
 from vae import VariationalAutoEncoder, VariationalUpsampleEncoder, USE_CUDA
 import numpy as np
 import torch.nn.functional as F
-import torch.optim as optim
 import numpy as np
 import argparse, os
 import copy, scipy
@@ -12,42 +12,35 @@ import scipy.misc
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-
+from torchvision import datasets
+from transforms import Compose, TestTransform, TrainTransform
+import math
+ZERO = 1e-5 # for numeric stability
 
 def load_data(args):
 
-    from torchvision import datasets
-    from torchvision import transforms
-
-    transform = transforms.Compose([
-        transforms.ToTensor(),
+    train_transform = Compose([
+        TrainTransform(),
     ])
     train_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'train'),
-                                      transform=transform)
-    anchor_pt = int(len(train_dset) * (1-args.valid_prop))
-    valid_dset = copy.deepcopy(train_dset)
-
-    train_dset.imgs = train_dset.imgs[:anchor_pt]
-    valid_dset.imgs = valid_dset.imgs[anchor_pt:]
-
+                                      transform=train_transform)
     train_loader = torch.utils.data.DataLoader(train_dset,
                                                batch_size=args.batch_size,
                                                shuffle=True,
                                                drop_last=True)
-    valid_loader = torch.utils.data.DataLoader(valid_dset,
-                                               batch_size=args.batch_size,
-                                               shuffle=True,
-                                               drop_last=True)
 
+    test_transform = Compose([
+        TestTransform(),
+    ])
     test_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'test'),
-                                     transform=transform)
+                                     transform=test_transform)
     test_loader = torch.utils.data.DataLoader(train_dset,
                                               batch_size=args.batch_size,
                                               shuffle=False,
                                               drop_last=True)
 
     print('Finished loading data...')
-    return train_loader, valid_loader, test_loader
+    return train_loader, test_loader
 
 
 def get_model_optimizer(mode, z_dim, lr):
@@ -132,6 +125,30 @@ def get_batch_loss(model, imgs, k=0):
         loss = -torch.mean(weighted_lower_bounds)
 
     return loss, kl, reconst_loss
+
+def _log2(x):
+    return torch.log(x) / torch.log(2)
+
+def get_batch_bpp(model, imgs):
+    """
+    :param model: the vae
+    :param imgs: [bsz, 3, 64, 64]
+    :return: batch average bpp
+    from https://arxiv.org/pdf/1705.05263.pdf sec 2.4
+    """
+    D = np.prod([sh for sh in imgs.shape[1:]] )
+
+    # [bsz, 2000]
+    #TODO: memory err here to be fixed
+    lower_bounds = model.importance_inference(imgs, k=2000)[2]
+
+    # importance weighted loglikelihood
+    # [bsz]
+    LL = _log2(
+        torch.mean(torch.exp(lower_bounds), dim=1) + ZERO
+    )
+    return torch.mean(LL - D * math.log2(256))
+
 
 def save_checkpoint(state, model_name):
     torch.save(state, model_name)

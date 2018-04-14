@@ -30,8 +30,6 @@ class VAEBase(nn.Module):
         self.fc_mu = nn.Linear(d*16, self.z_dim)
         self.fc_logvar = nn.Linear(d*16, self.z_dim)
 
-        # loss
-        self.bce = nn.BCELoss(size_average=False)
 
     def _encode(self, img):
         """

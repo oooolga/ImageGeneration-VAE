@@ -1,5 +1,5 @@
 import argparse
-from util import get_model_optimizer, load_data, print_all_settings, get_batch_loss, visualize
+from util import get_model_optimizer, load_data, print_all_settings, get_batch_loss, visualize, get_batch_bpp
 from util import save_checkpoint, load_checkpoint
 from vae import USE_CUDA
 from torch.autograd import Variable
@@ -72,13 +72,16 @@ def train(train_loader, model, optimizer, args):
 
 
 def eval(data_loader, model, args):
-
     model.eval()
     start = time.time()
+
     total_loss = 0
+    total_bpp = 0
+
     display_loss = 0
     display_kl = 0
     display_reconst_loss = 0
+    display_bpp = 0
 
     for batch_idx, (imgs, _) in enumerate(data_loader):
         imgs = Variable(imgs).cuda() if USE_CUDA else Variable(imgs)
@@ -86,19 +89,24 @@ def eval(data_loader, model, args):
         display_loss += loss[0].data[0] / args.print_freq
         display_kl += kl[0].data[0] / args.print_freq
         display_reconst_loss += reconst_loss[0].data[0] / args.print_freq
-
         total_loss += loss[0].data[0]
 
+        bpp = get_batch_bpp(model, imgs)
+        display_bpp += bpp[0].data[0] / args.print_freq
+        total_bpp += bpp[0].data[0]
+
         if (batch_idx+1) % args.print_freq == 0:
-            print('|\t\tbatch #:{}\tloss={:.2f}\tkl={:.2f}\treconst_loss={:.2f}\tuse {:.2f} sec'.format(
-                batch_idx+1, display_loss, display_kl, display_reconst_loss, time.time()-start))
+            print('|\t\tbatch #:{}\tloss={:.2f}\tkl={:.2f}\treconst_loss={:.2f}\tbpp={:.2f}\tuse {:.2f} sec'.format(
+                batch_idx+1, display_loss, display_kl, display_reconst_loss, display_bpp, time.time()-start))
             start = time.time()
             display_loss = 0
             display_kl = 0
             display_reconst_loss = 0
+            display_bpp = 0
 
-    avg_loss = total_loss/len(data_loader)
-    return avg_loss
+    avg_loss = total_loss / (1+batch_idx)
+    avg_bpp = total_bpp / (1+batch_size)
+    return avg_loss, avg_bpp
 
 
 def sample_visualization(data_loader, model, im_name, sample_size):
@@ -180,8 +188,8 @@ if __name__ == '__main__':
 
         print('|\tTrain loss={}\n'.format(avg_train_loss))
         print('|\t\tEval test:')
-        avg_test_loss = eval(test_loader, model, args)
-        print('|\tTest loss={}\n'.format(avg_test_loss))
+        avg_test_loss, avg_test_bpp = eval(test_loader, model, args)
+        print('|\tTest loss={}\tTest bpp={}\n'.format(avg_test_loss, avg_test_bpp))
 
         if epoch_i % args.save_freq == 0:
             save_checkpoint({'epoch_i': epoch_i, 'args': args, 'state_dict': model.state_dict(),
