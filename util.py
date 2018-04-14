@@ -62,10 +62,10 @@ def factorization(n):
 def visualize(tensor, im_name='conv1_kernel.png', pad=1, im_scale=1.0,
               model_name='', rescale=True, result_path='.'):
 
-    # map tensor wight in [0,255]
+    # map tensor wight in [0,256]
     if rescale:
-        tensor *= 255.0
-        tensor = torch.ceil(tensor)
+        tensor *= 256
+        tensor = torch.floor(tensor)
 
     # pad kernel
     p2d = (pad, pad, pad, pad)
