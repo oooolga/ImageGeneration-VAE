@@ -108,7 +108,7 @@ def sample_visualization(data_loader, model, im_name, sample_size):
     visualize(reconst, im_name=im_name, im_scale=1.0,
                      model_name=model_name, result_path=result_path)
     visualize(imgs, im_name=im_name[:-4]+'_org.png', im_scale=1.0,
-
+                     model_name=model_name, result_path=result_path)
 
 def weight_init(m):
     classname = m.__class__.__name__
