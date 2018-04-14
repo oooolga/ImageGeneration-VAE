@@ -138,16 +138,15 @@ def get_batch_bpp(model, imgs):
     """
     D = np.prod([sh for sh in imgs.shape[1:]] )
 
-    # 2000 log p(x,z) /q(z|x)
-    lower_bounds = [ model.inferece(imgs)[2] for _ in range(2000) ]
+    # average 2000 result
+    importance_sample_sum = 0
+    for _ in range(2000):
+        # log p(x,z)/q(z|x)
+        lower_bound = model.inferece(imgs)[2]
+        importance_sample_sum += torch.exp(lower_bound)
 
     # [bsz]
-    importance_sample_avg = 0
-    for lower_bound in lower_bounds:
-        importance_sample_avg += lower_bound / 2000
-
-    # [bsz]
-    LL = _log2(importance_sample_avg)
+    LL = _log2(importance_sample_sum / 2000)
     return torch.mean(LL - D * math.log2(256))
 
 
