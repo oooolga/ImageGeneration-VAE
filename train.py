@@ -107,7 +107,7 @@ def sample_visualization(data_loader, model, im_name, sample_size):
 
     visualize_kernel(reconst, im_name=im_name, im_scale=1.0,
                      model_name=model_name, result_path=result_path)
-    visualize_kernel(imgs, im_name=im_name[:-4]+'_org.jpg', im_scale=1.0,
+    visualize_kernel(imgs, im_name=im_name[:-4]+'_org.png', im_scale=1.0,
                      model_name=model_name, result_path=result_path)
 
 def weight_init(m):
