@@ -132,7 +132,7 @@ if __name__ == '__main__':
     model_name = args.model_name
 
     print_all_settings(args, model)
-    train_loader, _, test_loader = load_data(args)
+    train_loader, test_loader = load_data(args)
 
     sample_visualization(train_loader, model, 'epoch_0_train.png',
                          args.sample_size)

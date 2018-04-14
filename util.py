@@ -11,42 +11,33 @@ import scipy.misc
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-
+from torchvision import datasets
+from transforms import Compose, TestTransform, TrainTransform
 
 def load_data(args):
 
-    from torchvision import datasets
-    from torchvision import transforms
-
-    transform = transforms.Compose([
-        transforms.ToTensor(),
+    train_transform = Compose([
+        TrainTransform(),
     ])
     train_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'train'),
-                                      transform=transform)
-    anchor_pt = int(len(train_dset) * (1-args.valid_prop))
-    valid_dset = copy.deepcopy(train_dset)
-
-    train_dset.imgs = train_dset.imgs[:anchor_pt]
-    valid_dset.imgs = valid_dset.imgs[anchor_pt:]
-
+                                      transform=train_transform)
     train_loader = torch.utils.data.DataLoader(train_dset,
                                                batch_size=args.batch_size,
                                                shuffle=True,
                                                drop_last=True)
-    valid_loader = torch.utils.data.DataLoader(valid_dset,
-                                               batch_size=args.batch_size,
-                                               shuffle=True,
-                                               drop_last=True)
 
+    test_transform = Compose([
+        TestTransform(),
+    ])
     test_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'test'),
-                                     transform=transform)
+                                     transform=test_transform)
     test_loader = torch.utils.data.DataLoader(train_dset,
                                               batch_size=args.batch_size,
                                               shuffle=False,
                                               drop_last=True)
 
     print('Finished loading data...')
-    return train_loader, valid_loader, test_loader
+    return train_loader, test_loader
 
 
 def get_model(mode):
