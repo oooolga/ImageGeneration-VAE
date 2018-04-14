@@ -69,31 +69,31 @@ def factorization(n):
             return int(n / i), i
 
 
-def visualize_kernel(kernel_tensor, im_name='conv1_kernel.jpg', pad=1, im_scale=1.0,
-                     model_name='', rescale=True, result_path='.'):
+def visualize(tensor, im_name='conv1_kernel.png', pad=1, im_scale=1.0,
+              model_name='', rescale=True, result_path='.'):
 
     # map tensor wight in [0,255]
     if rescale:
-        kernel_tensor *= 255.0
-        kernel_tensor = torch.ceil(kernel_tensor)
+        tensor *= 255.0
+        tensor = torch.ceil(tensor)
 
     # pad kernel
     p2d = (pad, pad, pad, pad)
-    padded_kernel_tensor = F.pad(kernel_tensor, p2d, 'constant', 255)
+    padded_tensor = F.pad(tensor, p2d, 'constant', 255)
 
     # get the shape of output
-    grid_Y, grid_X = factorization(kernel_tensor.size(0))
-    Y, X = padded_kernel_tensor.size(2), padded_kernel_tensor.size(3)
+    grid_Y, grid_X = factorization(tensor.size(0))
+    Y, X = padded_tensor.size(2), padded_tensor.size(3)
 
     # reshape
     # (grid_Y*grid_X) x y_dim x x_dim x num_chann
-    padded_kernel_tensor = padded_kernel_tensor.permute(0, 2, 3, 1)
-    padded_kernel_tensor = padded_kernel_tensor.cpu().view(grid_X, grid_Y*Y, X, -1)
-    padded_kernel_tensor = padded_kernel_tensor.permute(0, 2, 1, 3)
-    #padded_kernel_tensor = padded_kernel_tensor.view(1, grid_X*X, grid_Y*Y, -1)
+    padded_tensor = padded_tensor.permute(0, 2, 3, 1)
+    padded_tensor = padded_tensor.cpu().view(grid_X, grid_Y*Y, X, -1)
+    padded_tensor = padded_tensor.permute(0, 2, 1, 3)
+    #padded_tensor = padded_tensor.view(1, grid_X*X, grid_Y*Y, -1)
 
     # kernel in numpy
-    kernel_im = np.uint8((padded_kernel_tensor.data).numpy()).reshape(grid_X*X,
+    kernel_im = np.uint8((padded_tensor.data).numpy()).reshape(grid_X*X,
                                                                        grid_Y*Y, -1)
     kernel_im = scipy.misc.imresize(kernel_im, im_scale, 'nearest')
     print('|\tSaving {}...'.format(os.path.join(result_path, model_name+'_'+im_name)))

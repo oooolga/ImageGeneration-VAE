@@ -29,6 +29,9 @@ class VAEBase(nn.Module):
         self.fc_mu = nn.Linear(d*16, Z_DIM)
         self.fc_logvar = nn.Linear(d*16, Z_DIM)
 
+        # loss
+        self.bce = nn.BCELoss(size_average=False)
+
     def _encode(self, img):
         """
         https://github.com/znxlwm/pytorch-MNIST-CelebA-GAN-DCGAN/blob/master/pytorch_CelebA_DCGAN.py
@@ -56,6 +59,17 @@ class VAEBase(nn.Module):
         """
         raise NotImplementedError
 
+    def reconstruct(self, imgs):
+        """
+        Doing a reconstruction
+        :param imgs: [bsz, 3, 64, 64]
+        :return:
+            reconst: [bsz, 3, 64, 64]
+        """
+        mu, logvar = self._encode(imgs)
+        reconst, _ = self._decode(mu, logvar)
+        return reconst
+
     def sample_images(self, mu=None, logvar=None, batch_size=100):
         """
         Sample images from the model. If mu and logvar is given than sample from that.
@@ -77,12 +91,6 @@ class VAEBase(nn.Module):
         return self._decode(mu, logvar)
 
     def reconstruction_sample(self, imgs):
-        """
-        Doing a reconstruction
-        :param imgs: [bsz, 3, 64, 64]
-        :return:
-            reconst: [bsz, 3, 64, 64]
-        """
         mu, logvar = self._encode(imgs)
         reconst, _ = self._decode(mu, logvar)
         return reconst
@@ -237,6 +245,9 @@ class VariationalUpsampleEncoder(VAEBase):
 
         self.up5 = nn.Upsample(scale_factor=4, mode=mode)
         self.deconv5 = nn.Conv2d(d, 3, 4, 2, 1)
+
+    def get_constructed_by_latent(self, z):
+        pass
 
     def _decode(self, mean, logvar):
         """
