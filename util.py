@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from vae import VariationalAutoEncoder, VariationalUpsampleEncoder, USE_CUDA
 import numpy as np
 import torch.nn.functional as F
+import torch.optim as optim
 import numpy as np
 import argparse, os
 import copy, scipy
@@ -49,15 +50,17 @@ def load_data(args):
     return train_loader, valid_loader, test_loader
 
 
-def get_model(mode):
+def get_model_optimizer(mode, z_dim, lr):
     if mode == 'deconvolution':
-        model = VariationalAutoEncoder()
+        model = VariationalAutoEncoder(z_dim)
     else:
-        model = VariationalUpsampleEncoder(mode=mode)
+        model = VariationalUpsampleEncoder(mode=mode, z_dim=z_dim)
 
     if torch.cuda.is_available():
         model = model.cuda()
-    return model
+
+    optimizer = optim.Adam(model.parameters(), lr)
+    return model, optimizer
 
 
 def factorization(n):
@@ -128,9 +131,22 @@ def get_batch_loss(model, imgs, k=0):
 
     return loss, kl, reconst_loss
 
-def save_checkpoints(state, model_name):
+def save_checkpoint(state, model_name):
     torch.save(state, model_name)
     print('Finished saving model: {}'.format(model_name))
+
+def load_checkpoint(model_name):
+    if model_name and os.path.isfile(model_name):
+        checkpoint = torch.load(model_name)
+        args = checkpoint['args']
+        model, optimizer = get_model_optimizer(args.operation, args.z_dim, args.lr)
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        print('Finished loading model and optimizer from {}'.format(model_name))
+    else:
+        print('File {} not found.'.format(model_name))
+        raise FileNotFoundError
+    return model, optimizer, args, checkpoint['epoch_i']
 
 def print_all_settings(args, model):
 

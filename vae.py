@@ -6,17 +6,17 @@ import numpy as np
 import pdb
 
 USE_CUDA = torch.cuda.is_available()
-Z_DIM = 100
 
 class VAEBase(nn.Module):
     """
     a base class for vae
     """
-    def __init__(self):
+    def __init__(self, z_dim=100):
         super(VAEBase, self).__init__()
         # encoder are the same build it
         # A symmetric architecture of DCGAN
         d = 128
+        self.z_dim = z_dim
         self.conv1 = nn.Conv2d(3, d, 4, 2, 1)
         self.conv1_bn = nn.BatchNorm2d(d)
         self.conv2 = nn.Conv2d(d, d*2, 4, 2, 1)
@@ -27,8 +27,8 @@ class VAEBase(nn.Module):
         self.conv4_bn = nn.BatchNorm2d(d*8)
         self.conv5 = nn.Conv2d(d*8, 16*d, 4, 1, 0)
 
-        self.fc_mu = nn.Linear(d*16, Z_DIM)
-        self.fc_logvar = nn.Linear(d*16, Z_DIM)
+        self.fc_mu = nn.Linear(d*16, self.z_dim)
+        self.fc_logvar = nn.Linear(d*16, self.z_dim)
 
         # loss
         self.bce = nn.BCELoss(size_average=False)
@@ -83,8 +83,8 @@ class VAEBase(nn.Module):
 
         # sample from prior
         if mu is None:
-            mu = Variable(torch.zeros(batch_size, Z_DIM), volatile=True)
-            logvar = Variable(torch.zeros(batch_size, Z_DIM), volatile=True)
+            mu = Variable(torch.zeros(batch_size, self.z_dim), volatile=True)
+            logvar = Variable(torch.zeros(batch_size, self.z_dim), volatile=True)
             if USE_CUDA:
                 mu = mu.cuda()
                 logvar = logvar.cuda()
@@ -188,7 +188,7 @@ class VAEBase(nn.Module):
         if USE_CUDA:
             eps = eps.cuda()
         z = mean + eps * torch.exp(0.5*logvar)
-        z = z.view(z.size(0), Z_DIM, 1, 1)
+        z = z.view(z.size(0), self.z_dim, 1, 1)
 
         img_size = list(imgs.size())
         img_size[0] = 0
@@ -220,12 +220,12 @@ class VariationalAutoEncoder(VAEBase):
     """
     An VAE use dcgan decoder
     """
-    def __init__(self):
-        super(VariationalAutoEncoder, self).__init__()
+    def __init__(self, z_dim):
+        super(VariationalAutoEncoder, self).__init__(z_dim)
         # https://github.com/znxlwm/pytorch-MNIST-CelebA-GAN-DCGAN/blob/master/pytorch_CelebA_DCGAN.py
         # decoder
         d = 128
-        self.deconv1 = nn.ConvTranspose2d(Z_DIM, d*8, 4, 1, 0)
+        self.deconv1 = nn.ConvTranspose2d(self.z_dim, d*8, 4, 1, 0)
         self.deconv1_bn = nn.BatchNorm2d(d*8)
         self.deconv2 = nn.ConvTranspose2d(d*8, d*4, 4, 2, 1)
         self.deconv2_bn = nn.BatchNorm2d(d*4)
@@ -251,13 +251,9 @@ class VariationalAutoEncoder(VAEBase):
         if USE_CUDA:
             eps = eps.cuda()
         z = mean + eps * torch.exp(0.5*logvar)
-        z = z.view(z.size(0), Z_DIM, 1, 1)
+        z = z.view(z.size(0), self.z_dim, 1, 1)
 
-        tmp = F.leaky_relu(self.deconv1_bn(self.deconv1(z)))
-        tmp = F.leaky_relu(self.deconv2_bn(self.deconv2(tmp)))
-        tmp = F.leaky_relu(self.deconv3_bn(self.deconv3(tmp)))
-        tmp = F.leaky_relu(self.deconv4_bn(self.deconv4(tmp)))
-        reconst = F.sigmoid(self.deconv5(tmp))
+        reconst = self.get_constructed_by_latent(z)
 
         return reconst, eps
 
@@ -266,19 +262,19 @@ class VariationalAutoEncoder(VAEBase):
         tmp = F.leaky_relu(self.deconv2_bn(self.deconv2(tmp)))
         tmp = F.leaky_relu(self.deconv3_bn(self.deconv3(tmp)))
         tmp = F.leaky_relu(self.deconv4_bn(self.deconv4(tmp)))
-        reconst = F.sigmoid(self.deconv5(tmp))
+        tmp = self.deconv5(tmp)
 
-        return reconst
+        return F.sigmoid(tmp)
 
 
 
 class VariationalUpsampleEncoder(VAEBase):
-    def __init__(self, mode='bilinear'):
-        super(VariationalUpsampleEncoder, self).__init__()
+    def __init__(self, mode='bilinear', z_dim=100):
+        super(VariationalUpsampleEncoder, self).__init__(z_dim)
 
         d = 128
         self.up1 = nn.Upsample(scale_factor=8, mode=mode)
-        self.deconv1 = nn.Conv2d(Z_DIM, d*8, 4, 2, 1)
+        self.deconv1 = nn.Conv2d(self.z_dim, d*8, 4, 2, 1)
         self.deconv1_bn = nn.BatchNorm2d(d*8)
 
         self.up2 = nn.Upsample(scale_factor=4, mode=mode)
@@ -311,27 +307,10 @@ class VariationalUpsampleEncoder(VAEBase):
         if USE_CUDA:
             eps = eps.cuda()
         z = mean + eps * torch.exp(0.5*logvar)
-        z = z.view(z.size(0), Z_DIM, 1, 1)
+        z = z.view(z.size(0), self.z_dim, 1, 1)
 
-        # [1024, 4, 4]
-        tmp = self.deconv1_bn(self.deconv1(self.up1(z)))
-        tmp = F.leaky_relu(tmp)
-
-        # [512, 8, 8]
-        tmp = self.deconv2_bn(self.deconv2(self.up2(tmp)))
-        tmp = F.leaky_relu(tmp)
-
-        # [256, 16, 16]
-        tmp = self.deconv3_bn(self.deconv3(self.up3(tmp)))
-        tmp = F.leaky_relu(tmp)
-
-        # [128, 32, 32]
-        tmp = self.deconv4_bn(self.deconv4(self.up4(tmp)))
-        tmp = F.leaky_relu(tmp)
-
-        # [3, 64, 64]
-        tmp = self.deconv5(self.up5(tmp))
-        return F.sigmoid(tmp), eps
+        reconst = self.get_constructed_by_latent(z)
+        return reconst, eps
 
     def get_constructed_by_latent(self, z):
         # [1024, 4, 4]

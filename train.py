@@ -1,5 +1,5 @@
 import argparse
-from util import get_model, load_data, print_all_settings, get_batch_loss, visualize
+from util import get_model_optimizer, load_data, print_all_settings, get_batch_loss, visualize, save_checkpoint, load_checkpoint
 from vae import USE_CUDA
 from torch.autograd import Variable
 import torch.optim as optim
@@ -12,6 +12,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', type=str, default='./data')
 parser.add_argument('--result_path', type=str, default='./result')
 parser.add_argument('--model_path', type=str, default='./model')
+parser.add_argument('--load_model', type=str, default=None,
+                     help='model load path')
 parser.add_argument('--model_name', type=str, default='deconvolution')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--sample_size', type=int, default=36, help='sample size')
@@ -26,6 +28,8 @@ parser.add_argument('--operation', type=str, default='deconvolution',
                     help='[deconvolution|nearest|bilinear]')
 parser.add_argument('--k', type=int, default=0,
                     help="if 0 then use pure inference else use importance weighted inference")
+parser.add_argument('--z_dim', type=int, default=100,
+                    help="latent variable\'s dimension")
 parser.add_argument('--lr', type=float, default=1e-4,
                     help='learning rate')
 parser.add_argument('--momentum', type=float, default=0.5,
@@ -140,8 +144,11 @@ def interpolate_samples(data_loader, model, mode='train'):
 
 if __name__ == '__main__':
 
-    model = get_model(args.operation)
-    model.apply(weight_init)
+    if args.load_model:
+        model, optimizer, args, epoch_i = load_checkpoint(args.load_model)
+    else:
+        model, optimizer = get_model_optimizer(args.operation, args.z_dim, args.lr)
+        model.apply(weight_init)
 
     if not os.path.exists(args.result_path):
         os.makedirs(args.result_path)
@@ -161,7 +168,6 @@ if __name__ == '__main__':
     sample_visualization(test_loader, model, 'epoch_0_test.png',
                          args.sample_size)
 
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
     for epoch_i in range(1, args.epochs+1):
         print('|\tEpoch {}:'.format(epoch_i))
         print('|\t\tTrain:')
@@ -178,9 +184,9 @@ if __name__ == '__main__':
         print('|\tTest loss={}\n'.format(avg_test_loss))
 
         if epoch_i % args.save_freq == 0:
-            save_checkpoints({'epoch_i': epoch_i, 'args': args, 'state_dict': model.state_dict(),
-                               'optimizer': optimizer.state_dict()}, 
-                               os.path.join(args.model_path, model_name+str(epoch_i)+'.pt'))
+            save_checkpoint({'epoch_i': epoch_i, 'args': args, 'state_dict': model.state_dict(),
+                             'optimizer': optimizer.state_dict()}, 
+                              os.path.join(args.model_path, model_name+str(epoch_i)+'.pt'))
 
     interpolate_samples(train_loader, model)
     interpolate_samples(test_loader, model, mode='test')
