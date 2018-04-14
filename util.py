@@ -56,7 +56,7 @@ def get_model_optimizer(mode, z_dim, lr):
     else:
         model = VariationalUpsampleEncoder(mode=mode, z_dim=z_dim)
 
-    if torch.cuda.is_available():
+    if USE_CUDA:
         model = model.cuda()
 
     optimizer = optim.Adam(model.parameters(), lr)
@@ -90,7 +90,9 @@ def visualize(tensor, im_name='conv1_kernel.png', pad=1, im_scale=1.0,
     # reshape
     # (grid_Y*grid_X) x y_dim x x_dim x num_chann
     padded_tensor = padded_tensor.permute(0, 2, 3, 1)
-    padded_tensor = padded_tensor.cpu().view(grid_X, grid_Y*Y, X, -1)
+    if USE_CUDA:
+        padded_tensor = padded_tensor.cpu()
+    padded_tensor = padded_tensor.view(grid_X, grid_Y*Y, X, -1)
     padded_tensor = padded_tensor.permute(0, 2, 1, 3)
     #padded_tensor = padded_tensor.view(1, grid_X*X, grid_Y*Y, -1)
 

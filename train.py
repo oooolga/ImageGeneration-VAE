@@ -1,8 +1,8 @@
 import argparse
-from util import get_model_optimizer, load_data, print_all_settings, get_batch_loss, visualize, save_checkpoint, load_checkpoint
+from util import get_model_optimizer, load_data, print_all_settings, get_batch_loss, visualize
+from util import save_checkpoint, load_checkpoint
 from vae import USE_CUDA
 from torch.autograd import Variable
-import torch.optim as optim
 import torch
 import pdb
 import time
