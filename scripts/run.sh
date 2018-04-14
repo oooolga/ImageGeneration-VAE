@@ -6,5 +6,6 @@ if [[ ${PWD} != */ImageGeneration-VAE ]]
         exit
 fi
 
+PYTHONUNBUFFERED=1
 PYTHON_BIN="/u/luyuchen/miniconda2/envs/pytorch3/bin/python" # change to yours
 ${PYTHON_BIN} train.py
