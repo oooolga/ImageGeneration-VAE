@@ -84,7 +84,7 @@ def eval(data_loader, model, args):
     display_bpp = 0
 
     for batch_idx, (imgs, _) in enumerate(data_loader):
-        imgs = Variable(imgs).cuda() if USE_CUDA else Variable(imgs)
+        imgs = Variable(imgs, volatile=True).cuda() if USE_CUDA else Variable(imgs)
         loss, kl, reconst_loss = get_batch_loss(model, imgs, args.k)
         display_loss += loss[0].data[0] / args.print_freq
         display_kl += kl[0].data[0] / args.print_freq
