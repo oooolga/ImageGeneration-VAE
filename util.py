@@ -13,6 +13,8 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 from torchvision import datasets
 from transforms import Compose, TestTransform, TrainTransform
+import math
+ZERO = 1e-5 # for numeric stability
 
 def load_data(args):
 
@@ -119,6 +121,27 @@ def get_batch_loss(model, imgs, k=0):
 
     return loss, kl, reconst_loss
 
+def _log2(x):
+    return torch.log(x) / torch.log(2)
+
+def get_batch_bpp(model, imgs):
+    """
+    :param model: the vae
+    :param imgs: [bsz, 3, 64, 64]
+    :return: batch average bpp
+    from https://arxiv.org/pdf/1705.05263.pdf sec 2.4
+    """
+    D = np.prod([sh for sh in imgs.shape[1:]] )
+
+    # [bsz, 2000]
+    lower_bounds = model.importance_inference(imgs, k=2000)[2]
+
+    # importance weighted loglikelihood
+    # [bsz]
+    LL = _log2(
+        torch.mean(torch.exp(lower_bounds), dim=1) + ZERO
+    )
+    return torch.mean(LL - D * math.log2(256))
 
 
 def print_all_settings(args, model):
