@@ -36,7 +36,7 @@ def load_data(args):
     ])
     test_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'test'),
                                      transform=test_transform)
-    test_loader = torch.utils.data.DataLoader(train_dset,
+    test_loader = torch.utils.data.DataLoader(test_dset,
                                               batch_size=args.batch_size,
                                               shuffle=False,
                                               drop_last=True,
