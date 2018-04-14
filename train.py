@@ -39,6 +39,7 @@ def train(train_loader, model, optimizer, args):
     display_loss = 0
     display_kl = 0
     display_reconst_loss = 0
+    total_loss = 0
     for batch_idx, (imgs, _) in enumerate(train_loader):
 
         imgs = Variable(imgs).cuda() if USE_CUDA else Variable(imgs)
@@ -48,6 +49,7 @@ def train(train_loader, model, optimizer, args):
         display_loss += loss[0].data[0] / args.print_freq
         display_kl += kl[0].data[0] / args.print_freq
         display_reconst_loss += reconst_loss[0].data[0] / args.print_freq
+        total_loss += loss[0].data[0]
 
         loss.backward()
         optimizer.step()
@@ -59,6 +61,7 @@ def train(train_loader, model, optimizer, args):
             display_loss = 0
             display_kl = 0
             display_reconst_loss = 0
+    return total_loss / (1+batch_idx)
 
 
 def eval(data_loader, model, args):
@@ -140,15 +143,13 @@ if __name__ == '__main__':
     for epoch_i in range(1, args.epochs+1):
         print('|\tEpoch {}:'.format(epoch_i))
         print('|\t\tTrain:')
-        train(train_loader, model, optimizer, args)
+        avg_train_loss = train(train_loader, model, optimizer, args)
 
         sample_visualization(train_loader, model, 'epoch_{}_train.png'.format(epoch_i),
                              args.sample_size)
         sample_visualization(test_loader, model, 'epoch_{}_test.png'.format(epoch_i),
                              args.sample_size)
 
-        print('|\t\tEval train:')
-        avg_train_loss = eval(train_loader, model, args)
         print('|\tTrain loss={}\n'.format(avg_train_loss))
         print('|\t\tEval test:')
         avg_test_loss = eval(test_loader, model, args)

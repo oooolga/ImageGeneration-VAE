@@ -20,7 +20,6 @@ def load_data(args):
 
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
     train_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'train'),
                                       transform=transform)
@@ -142,4 +141,5 @@ def print_all_settings(args, model):
     num_params = 0
     for param in model.parameters():
         num_params += np.prod([ sh for sh in param.shape])
+
     print('Model capacity:\t\t{}\n'.format(num_params))
