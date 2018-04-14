@@ -64,8 +64,8 @@ def factorization(n):
     from math import sqrt
     for i in range(int(sqrt(float(n))), 0, -1):
         if n % i == 0:
-            if i == 1: print('Who would enter a prime number of filters')
-            return int(n / i), i
+            #if i == 1: print('Who would enter a prime number of filters')
+            return i, int(n / i)
 
 
 def visualize(tensor, im_name='conv1_kernel.png', pad=1, im_scale=1.0,

@@ -14,16 +14,18 @@ parser.add_argument('--result_path', type=str, default='./result')
 parser.add_argument('--model_name', type=str, default='deconvolution')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--sample_size', type=int, default=36, help='sample size')
-parser.add_argument('--epochs', type=int, default=10,
+parser.add_argument('--epochs', type=int, default=1,
                     help='total epochs')
 parser.add_argument('--print_freq', type=int, default=10,
                     help='print frequency')
+parser.add_argument('--save_freq', type=int, default=1,
+                    help='save frequency')
 parser.add_argument('--valid_prop', type=float, default=0, help='validation proportion')
 parser.add_argument('--operation', type=str, default='deconvolution',
                     help='[deconvolution|nearest|bilinear]')
 parser.add_argument('--k', type=int, default=0,
                     help="if 0 then use pure inference else use importance weighted inference")
-parser.add_argument('--lr', type=float, default=3e-4,
+parser.add_argument('--lr', type=float, default=1e-4,
                     help='learning rate')
 parser.add_argument('--momentum', type=float, default=0.5,
                     help='momentum')
@@ -118,6 +120,22 @@ def weight_init(m):
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
 
+def interpolate_samples(data_loader, model):
+    model.eval()
+
+    for imgs, _ in data_loader:
+        imgs = Variable(imgs).cuda() if USE_CUDA else Variable(imgs)
+        imgs = imgs[:2]
+        break
+
+    reconst_interp_z, reconst_interp_im = model.get_interpolate_images(imgs)
+    reconst_interp_z = torch.from_numpy(reconst_interp_z).cuda()
+    reconst_interp_im = torch.from_numpy(reconst_interp_im).cuda()
+    visualize(reconst_interp_z, im_name='reconstruction_z.png', im_scale=1.0,
+              model_name=model_name, result_path=result_path)
+    visualize(reconst_interp_im, im_name='reconstruction_im.png', im_scale=1.0,
+              model_name=model_name, result_path=result_path)
+
 
 if __name__ == '__main__':
 
@@ -138,6 +156,8 @@ if __name__ == '__main__':
                          args.sample_size)
     sample_visualization(test_loader, model, 'epoch_0_test.png',
                          args.sample_size)
+
+    interpolate_samples(train_loader, model)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     for epoch_i in range(1, args.epochs+1):

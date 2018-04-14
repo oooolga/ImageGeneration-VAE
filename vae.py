@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+import numpy as np
 import pdb
 
 USE_CUDA = torch.cuda.is_available()
@@ -28,6 +29,9 @@ class VAEBase(nn.Module):
 
         self.fc_mu = nn.Linear(d*16, Z_DIM)
         self.fc_logvar = nn.Linear(d*16, Z_DIM)
+
+        # loss
+        self.bce = nn.BCELoss(size_average=False)
 
     def _encode(self, img):
         """
@@ -92,6 +96,9 @@ class VAEBase(nn.Module):
         reconst, _ = self._decode(mu, logvar)
         return reconst
 
+    def get_constructed_by_latent(self, z):
+        raise NotImplementedError
+
 
     def importance_inference(self, imgs, k=50):
         """
@@ -119,7 +126,7 @@ class VAEBase(nn.Module):
             reconst, eps = self._decode(mu, logvar)
 
             # log p(x | z)
-            log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(1-reconst)
+            log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(reconst)
             # sum over pixels and each channel
             log_x_cond_z = log_x_cond_z.view(log_x_cond_z.size(0), -1)
             log_x_cond_z = torch.sum(log_x_cond_z, dim=1)
@@ -157,7 +164,7 @@ class VAEBase(nn.Module):
         reconst, _ = self._decode(mu, logvar)
 
         # log p(x | z)
-        log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(1-reconst)
+        log_x_cond_z = imgs * torch.log(reconst) + (1-imgs) * torch.log(reconst)
         # sum over pixels and each channel
         log_x_cond_z = log_x_cond_z.view(log_x_cond_z.size(0), -1)
         log_x_cond_z = torch.sum(log_x_cond_z, dim=1)
@@ -170,6 +177,42 @@ class VAEBase(nn.Module):
         # lower bound
         lower_bound = log_x_cond_z - KL_q_p
         return KL_q_p, log_x_cond_z, lower_bound, reconst
+
+    def get_interpolate_images(self, imgs):
+        mean, logvar = self._encode(imgs)
+
+         # reparametric trick
+        eps = torch.FloatTensor(mean.shape)
+        eps.normal_()
+        eps = Variable(eps)
+        if USE_CUDA:
+            eps = eps.cuda()
+        z = mean + eps * torch.exp(0.5*logvar)
+        z = z.view(z.size(0), Z_DIM, 1, 1)
+
+        img_size = list(imgs.size())
+        img_size[0] = 0
+        reconstruct_z_img = np.empty(img_size)
+        reconstruct_img = np.empty(img_size)
+
+        z_0 = z[0,:,:,:].unsqueeze(0)
+        z_1 = z[1,:,:,:].unsqueeze(0)
+
+        im_0 = imgs[0,:,:,:].unsqueeze(0)
+        im_1 = imgs[1,:,:,:].unsqueeze(0)
+        for alpha in np.linspace(0,1,11):
+            
+            z_prime = float(alpha)*z_0+float((1-alpha))*z_1
+            const = self.get_constructed_by_latent(z_prime)
+            const = const.cpu().data.numpy()
+            reconstruct_z_img = np.concatenate((reconstruct_z_img, const))
+
+            im_prime = float(alpha)*im_0+float((1-alpha))*im_1
+            im_prime = im_prime.cpu().data.numpy()
+            reconstruct_img = np.concatenate((reconstruct_img, im_prime))
+
+        return reconstruct_z_img, reconstruct_img
+
 
 
 
@@ -217,6 +260,15 @@ class VariationalAutoEncoder(VAEBase):
         reconst = F.sigmoid(self.deconv5(tmp))
 
         return reconst, eps
+
+    def get_constructed_by_latent(self, z):
+        tmp = F.leaky_relu(self.deconv1_bn(self.deconv1(z)))
+        tmp = F.leaky_relu(self.deconv2_bn(self.deconv2(tmp)))
+        tmp = F.leaky_relu(self.deconv3_bn(self.deconv3(tmp)))
+        tmp = F.leaky_relu(self.deconv4_bn(self.deconv4(tmp)))
+        reconst = F.sigmoid(self.deconv5(tmp))
+
+        return reconst
 
 
 
@@ -282,7 +334,25 @@ class VariationalUpsampleEncoder(VAEBase):
         return F.sigmoid(tmp), eps
 
     def get_constructed_by_latent(self, z):
-        pass
+        # [1024, 4, 4]
+        tmp = self.deconv1_bn(self.deconv1(self.up1(z)))
+        tmp = F.leaky_relu(tmp)
+
+        # [512, 8, 8]
+        tmp = self.deconv2_bn(self.deconv2(self.up2(tmp)))
+        tmp = F.leaky_relu(tmp)
+
+        # [256, 16, 16]
+        tmp = self.deconv3_bn(self.deconv3(self.up3(tmp)))
+        tmp = F.leaky_relu(tmp)
+
+        # [128, 32, 32]
+        tmp = self.deconv4_bn(self.deconv4(self.up4(tmp)))
+        tmp = F.leaky_relu(tmp)
+
+        # [3, 64, 64]
+        tmp = self.deconv5(self.up5(tmp))
+        return F.sigmoid(tmp)
 
 
 
