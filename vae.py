@@ -143,6 +143,7 @@ class VAEBase(nn.Module):
         lower_bounds = torch.stack(lower_bounds, 1)
         return mc_KL_q_p, mc_log_x_cond_z, lower_bounds
 
+
     def inference(self, imgs):
         """
         perform an enc and dec, getting the lower bound, log p(x|z) and KL(q(z|x)|p(z)).
@@ -246,9 +247,6 @@ class VariationalUpsampleEncoder(VAEBase):
         self.up5 = nn.Upsample(scale_factor=4, mode=mode)
         self.deconv5 = nn.Conv2d(d, 3, 4, 2, 1)
 
-    def get_constructed_by_latent(self, z):
-        pass
-
     def _decode(self, mean, logvar):
         """
         Decode from given mean and logvar of z.
@@ -285,6 +283,11 @@ class VariationalUpsampleEncoder(VAEBase):
         # [3, 64, 64]
         tmp = self.deconv5(self.up5(tmp))
         return F.sigmoid(tmp), eps
+
+    def get_constructed_by_latent(self, z):
+        pass
+
+
 
 
 if __name__ == '__main__':
