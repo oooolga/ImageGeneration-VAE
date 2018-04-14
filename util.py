@@ -73,8 +73,9 @@ def visualize(tensor, im_name='conv1_kernel.png', pad=1, im_scale=1.0,
 
     # map tensor wight in [0,255]
     if rescale:
-        tensor *= 255.0
-        tensor = torch.ceil(tensor)
+        tensor *= 256
+        tensor = torch.floor(tensor)
+        tensor = torch.clamp(tensor, min=0, max=255)
 
     # pad kernel
     p2d = (pad, pad, pad, pad)
