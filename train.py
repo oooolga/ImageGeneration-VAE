@@ -1,5 +1,5 @@
 import argparse
-from util import get_model, load_data, print_all_settings, get_batch_loss, visualize_kernel
+from util import get_model, load_data, print_all_settings, get_batch_loss, visualize
 from vae import USE_CUDA
 from torch.autograd import Variable
 import torch.optim as optim
@@ -105,10 +105,10 @@ def sample_visualization(data_loader, model, im_name, sample_size):
 
     reconst = model.reconstruction_sample(imgs)
 
-    visualize_kernel(reconst, im_name=im_name, im_scale=1.0,
+    visualize(reconst, im_name=im_name, im_scale=1.0,
                      model_name=model_name, result_path=result_path)
-    visualize_kernel(imgs, im_name=im_name[:-4]+'_org.png', im_scale=1.0,
-                     model_name=model_name, result_path=result_path)
+    visualize(imgs, im_name=im_name[:-4]+'_org.png', im_scale=1.0,
+
 
 def weight_init(m):
     classname = m.__class__.__name__
@@ -133,6 +133,11 @@ if __name__ == '__main__':
 
     print_all_settings(args, model)
     train_loader, _, test_loader = load_data(args)
+
+    sample_visualization(train_loader, model, 'epoch_0_train.png',
+                         args.sample_size)
+    sample_visualization(test_loader, model, 'epoch_0_test.png',
+                         args.sample_size)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     for epoch_i in range(1, args.epochs+1):
