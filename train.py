@@ -17,13 +17,12 @@ parser.add_argument('--load_model', type=str, default=None,
 parser.add_argument('--model_name', type=str, default='deconvolution')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--sample_size', type=int, default=36, help='sample size')
-parser.add_argument('--epochs', type=int, default=1,
+parser.add_argument('--epochs', type=int, default=10,
                     help='total epochs')
-parser.add_argument('--print_freq', type=int, default=10,
+parser.add_argument('--print_freq', type=int, default=100,
                     help='print frequency')
 parser.add_argument('--save_freq', type=int, default=1,
                     help='save frequency')
-parser.add_argument('--valid_prop', type=float, default=0, help='validation proportion')
 parser.add_argument('--operation', type=str, default='deconvolution',
                     help='[deconvolution|nearest|bilinear]')
 parser.add_argument('--k', type=int, default=0,
@@ -32,8 +31,6 @@ parser.add_argument('--z_dim', type=int, default=100,
                     help="latent variable\'s dimension")
 parser.add_argument('--lr', type=float, default=1e-4,
                     help='learning rate')
-parser.add_argument('--momentum', type=float, default=0.5,
-                    help='momentum')
 args = parser.parse_args()
 
 
@@ -81,7 +78,6 @@ def eval(data_loader, model, args):
     display_loss = 0
     display_kl = 0
     display_reconst_loss = 0
-    display_bpp = 0
 
     for batch_idx, (imgs, _) in enumerate(data_loader):
         imgs = Variable(imgs, volatile=True).cuda() if USE_CUDA else Variable(imgs)
@@ -91,22 +87,16 @@ def eval(data_loader, model, args):
         display_reconst_loss += reconst_loss[0].data[0] / args.print_freq
         total_loss += loss[0].data[0]
 
-        bpp = get_batch_bpp(model, imgs)
-        display_bpp += bpp[0].data[0] / args.print_freq
-        total_bpp += bpp[0].data[0]
-
         if (batch_idx+1) % args.print_freq == 0:
-            print('|\t\tbatch #:{}\tloss={:.2f}\tkl={:.2f}\treconst_loss={:.2f}\tbpp={:.2f}\tuse {:.2f} sec'.format(
-                batch_idx+1, display_loss, display_kl, display_reconst_loss, display_bpp, time.time()-start))
+            print('|\t\tbatch #:{}\tloss={:.2f}\tkl={:.2f}\treconst_loss={:.2f}\tuse {:.2f} sec'.format(
+                batch_idx+1, display_loss, display_kl, display_reconst_loss, time.time()-start))
             start = time.time()
             display_loss = 0
             display_kl = 0
             display_reconst_loss = 0
-            display_bpp = 0
 
     avg_loss = total_loss / (1+batch_idx)
-    avg_bpp = total_bpp / (1+batch_size)
-    return avg_loss, avg_bpp
+    return avg_loss
 
 
 def sample_visualization(data_loader, model, im_name, sample_size):
@@ -185,11 +175,11 @@ if __name__ == '__main__':
                              args.sample_size)
         sample_visualization(test_loader, model, 'epoch_{}_test.png'.format(epoch_i),
                              args.sample_size)
-
         print('|\tTrain loss={}\n'.format(avg_train_loss))
+
         print('|\t\tEval test:')
-        avg_test_loss, avg_test_bpp = eval(test_loader, model, args)
-        print('|\tTest loss={}\tTest bpp={}\n'.format(avg_test_loss, avg_test_bpp))
+        avg_test_loss  = eval(test_loader, model, args)
+        print('|\tTest loss={}\n'.format(avg_test_loss))
 
         if epoch_i % args.save_freq == 0:
             save_checkpoint({'epoch_i': epoch_i, 'args': args, 'state_dict': model.state_dict(),
@@ -198,4 +188,5 @@ if __name__ == '__main__':
 
     interpolate_samples(train_loader, model)
     interpolate_samples(test_loader, model, mode='test')
+
 

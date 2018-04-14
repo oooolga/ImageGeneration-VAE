@@ -27,7 +27,9 @@ def load_data(args):
     train_loader = torch.utils.data.DataLoader(train_dset,
                                                batch_size=args.batch_size,
                                                shuffle=True,
-                                               drop_last=True)
+                                               drop_last=True,
+                                               num_workers=4,
+                                               )
 
     test_transform = Compose([
         TestTransform(),
@@ -37,7 +39,9 @@ def load_data(args):
     test_loader = torch.utils.data.DataLoader(train_dset,
                                               batch_size=args.batch_size,
                                               shuffle=False,
-                                              drop_last=True)
+                                              drop_last=True,
+                                              num_workers=4
+                                              )
 
     print('Finished loading data...')
     return train_loader, test_loader
@@ -127,7 +131,7 @@ def get_batch_loss(model, imgs, k=0):
     return loss, kl, reconst_loss
 
 def _log2(x):
-    return torch.log(x) / torch.log(2)
+    return torch.log(x) / math.log(2.0)
 
 def get_batch_bpp(model, imgs):
     """
@@ -137,16 +141,16 @@ def get_batch_bpp(model, imgs):
     from https://arxiv.org/pdf/1705.05263.pdf sec 2.4
     """
     D = np.prod([sh for sh in imgs.shape[1:]] )
-
+    num_samples = 100
     # average 2000 result
     importance_sample_sum = 0
-    for _ in range(2000):
+    for _ in range(num_samples):
         # log p(x,z)/q(z|x)
-        lower_bound = model.inferece(imgs)[2]
+        lower_bound = model.inference(imgs)[2]
         importance_sample_sum += torch.exp(lower_bound)
 
     # [bsz]
-    LL = _log2(importance_sample_sum / 2000)
+    LL = _log2(importance_sample_sum / num_samples)
     return torch.mean(LL - D * math.log2(256))
 
 
