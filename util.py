@@ -90,6 +90,7 @@ def visualize(tensor, im_name='conv1_kernel.png', pad=1, im_scale=1.0,
     padded_tensor = padded_tensor.permute(0, 2, 3, 1)
     if USE_CUDA:
         padded_tensor = padded_tensor.cpu()
+    padded_tensor = padded_tensor.contiguous()
     padded_tensor = padded_tensor.view(grid_X, grid_Y*Y, X, -1)
     padded_tensor = padded_tensor.permute(0, 2, 1, 3)
     #padded_tensor = padded_tensor.view(1, grid_X*X, grid_Y*Y, -1)

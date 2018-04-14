@@ -13,8 +13,8 @@ def parse_args():
     :return: args. A argument namespace
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str, default='./data')
-    parser.add_argument('--out_dir', type=str, default='./result')
+    parser.add_argument('--data_path', type=str, default='/home/luyuchen/project/luyuchen/data/celeba_hw4')
+    parser.add_argument('--out_dir', type=str, default='/home/luyuchen/scratch/result')
     parser.add_argument('--load_model', type=str, default=None,
                      help='model load path')
     parser.add_argument('--model_name', type=str, default='deconvolution')
