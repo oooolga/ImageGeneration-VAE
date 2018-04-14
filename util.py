@@ -72,6 +72,8 @@ def visualize(tensor, im_name='conv1_kernel.png', pad=1, im_scale=1.0,
               model_name='', rescale=True, result_path='.'):
 
     # map tensor wight in [0,255]
+    import ipdb
+    ipdb.set_trace()
     if rescale:
         tensor *= 255.0
         tensor = torch.ceil(tensor)
