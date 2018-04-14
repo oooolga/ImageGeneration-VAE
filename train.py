@@ -8,30 +8,33 @@ import pdb
 import time
 import os
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--data_path', type=str, default='./data')
-parser.add_argument('--result_path', type=str, default='./result')
-parser.add_argument('--model_path', type=str, default='./model')
-parser.add_argument('--load_model', type=str, default=None,
+def parse_args():
+    """
+    :return: args. A argument namespace
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', type=str, default='./data')
+    parser.add_argument('--out_dir', type=str, default='./result')
+    parser.add_argument('--load_model', type=str, default=None,
                      help='model load path')
-parser.add_argument('--model_name', type=str, default='deconvolution')
-parser.add_argument('--batch_size', type=int, default=128, help='batch size')
-parser.add_argument('--sample_size', type=int, default=36, help='sample size')
-parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--model_name', type=str, default='deconvolution')
+    parser.add_argument('--batch_size', type=int, default=128, help='batch size')
+    parser.add_argument('--sample_size', type=int, default=36, help='sample size')
+    parser.add_argument('--epochs', type=int, default=10,
                     help='total epochs')
-parser.add_argument('--print_freq', type=int, default=100,
+    parser.add_argument('--print_freq', type=int, default=100,
                     help='print frequency')
-parser.add_argument('--save_freq', type=int, default=1,
+    parser.add_argument('--save_freq', type=int, default=1,
                     help='save frequency')
-parser.add_argument('--operation', type=str, default='deconvolution',
+    parser.add_argument('--operation', type=str, default='deconvolution',
                     help='[deconvolution|nearest|bilinear]')
-parser.add_argument('--k', type=int, default=0,
+    parser.add_argument('--k', type=int, default=0,
                     help="if 0 then use pure inference else use importance weighted inference")
-parser.add_argument('--z_dim', type=int, default=100,
+    parser.add_argument('--z_dim', type=int, default=100,
                     help="latent variable\'s dimension")
-parser.add_argument('--lr', type=float, default=1e-4,
+    parser.add_argument('--lr', type=float, default=1e-4,
                     help='learning rate')
-args = parser.parse_args()
+    return parser.parse_args()
 
 
 def train(train_loader, model, optimizer, args):
@@ -111,9 +114,9 @@ def sample_visualization(data_loader, model, im_name, sample_size):
     reconst = model.reconstruction_sample(imgs)
 
     visualize(reconst, im_name=im_name, im_scale=1.0,
-                     model_name=model_name, result_path=result_path)
+                     model_name=args.model_name, result_path=result_path)
     visualize(imgs, im_name=im_name[:-4]+'_org.png', im_scale=1.0,
-                     model_name=model_name, result_path=result_path)
+                     model_name=args.model_name, result_path=result_path)
 
 def weight_init(m):
     classname = m.__class__.__name__
@@ -123,7 +126,7 @@ def weight_init(m):
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
 
-def interpolate_samples(data_loader, model, mode='train'):
+def interpolate_samples(data_loader, model, args, mode='train'):
     model.eval()
 
     for imgs, _ in data_loader:
@@ -135,37 +138,40 @@ def interpolate_samples(data_loader, model, mode='train'):
     reconst_interp_z = torch.from_numpy(reconst_interp_z).cuda()
     reconst_interp_im = torch.from_numpy(reconst_interp_im).cuda()
     visualize(reconst_interp_z, im_name='reconstruction_z_{}.png'.format(mode), im_scale=1.0,
-              model_name=model_name, result_path=result_path)
+              model_name=args.model_name, result_path=result_path)
     visualize(reconst_interp_im, im_name='reconstruction_im_{}.png'.format(mode), im_scale=1.0,
-              model_name=model_name, result_path=result_path)
+              model_name=args.model_name, result_path=result_path)
 
 
 if __name__ == '__main__':
+    args = parse_args()
 
+    # make output result
+    if os.path.isdir(args.out_dir):
+        print("{} exists!".format(args.out_dir))
+        exit()
+    os.mkdir(args.out_dir)
+    result_path = os.path.join(args.out_dir, 'imgs')
+    model_path = os.path.join(args.out_dir, 'model')
+    os.makedirs(result_path)
+    os.makedirs(model_path)
+
+    # load model
     if args.load_model:
         model, optimizer, args, epoch_i = load_checkpoint(args.load_model)
     else:
         model, optimizer = get_model_optimizer(args.operation, args.z_dim, args.lr)
         model.apply(weight_init)
-
-    if not os.path.exists(args.result_path):
-        os.makedirs(args.result_path)
-
-    if not os.path.exists(args.model_path):
-        os.makedirs(args.model_path)
-
-    global batch_size, print_freq, result_path, model_name
-    batch_size, print_freq, result_path = args.batch_size, args.print_freq, args.result_path
-    model_name = args.model_name
-
     print_all_settings(args, model)
+
+    # load data
     train_loader, test_loader = load_data(args)
 
+    # main loop
     sample_visualization(train_loader, model, 'epoch_0_train.png',
                          args.sample_size)
     sample_visualization(test_loader, model, 'epoch_0_test.png',
                          args.sample_size)
-
     for epoch_i in range(1, args.epochs+1):
         print('|\tEpoch {}:'.format(epoch_i))
         print('|\t\tTrain:')
@@ -184,9 +190,9 @@ if __name__ == '__main__':
         if epoch_i % args.save_freq == 0:
             save_checkpoint({'epoch_i': epoch_i, 'args': args, 'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}, 
-                              os.path.join(args.model_path, model_name+str(epoch_i)+'.pt'))
+                              os.path.join(args.model_path, args.model_name+str(epoch_i)+'.pt'))
 
-    interpolate_samples(train_loader, model)
-    interpolate_samples(test_loader, model, mode='test')
+    interpolate_samples(train_loader, model, args)
+    interpolate_samples(test_loader, model, args, mode='test')
 
 
