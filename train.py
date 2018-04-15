@@ -7,6 +7,7 @@ import torch
 import pdb
 import time
 import os
+import math
 
 def parse_args():
     """
@@ -157,10 +158,11 @@ if __name__ == '__main__':
     os.makedirs(model_path)
 
     # load model
+    curr_lr = args.lr
     if args.load_model:
         model, optimizer, args, epoch_i = load_checkpoint(args.load_model)
     else:
-        model, optimizer = get_model_optimizer(args.operation, args.z_dim, args.lr)
+        model, optimizer = get_model_optimizer(args.operation, args.z_dim, curr_lr)
         model.apply(weight_init)
     print_all_settings(args, model)
 
@@ -168,6 +170,7 @@ if __name__ == '__main__':
     train_loader, test_loader = load_data(args)
 
     # main loop
+    prev_avg_test_loss = math.inf
     sample_visualization(train_loader, model, 'epoch_0_train.png',
                          args.sample_size)
     sample_visualization(test_loader, model, 'epoch_0_test.png',
@@ -187,10 +190,18 @@ if __name__ == '__main__':
         avg_test_loss  = eval(test_loader, model, args)
         print('|\tTest loss={}\n'.format(avg_test_loss))
 
+        # learning rate decrease if not much improvment
+        if (prev_avg_test_loss - avg_test_loss) / prev_avg_test_loss < 0.01:
+            curr_lr /= 2
+            print("decrease learning rate to {:.2f}".format(curr_lr))
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = curr_lr
+
         if epoch_i % args.save_freq == 0:
             save_checkpoint({'epoch_i': epoch_i, 'args': args, 'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}, 
                               os.path.join(args.model_path, args.model_name+str(epoch_i)+'.pt'))
+        prev_avg_test_loss = avg_test_loss
 
     interpolate_samples(train_loader, model, args)
     interpolate_samples(test_loader, model, args, mode='test')
