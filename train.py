@@ -200,7 +200,7 @@ if __name__ == '__main__':
         if epoch_i % args.save_freq == 0:
             save_checkpoint({'epoch_i': epoch_i, 'args': args, 'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}, 
-                              os.path.join(args.model_path, args.model_name+str(epoch_i)+'.pt'))
+                              os.path.join(model_path, args.model_name+str(epoch_i)+'.pt'))
         prev_avg_test_loss = avg_test_loss
 
     interpolate_samples(train_loader, model, args)
