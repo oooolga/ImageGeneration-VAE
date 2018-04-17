@@ -14,8 +14,9 @@ def parse_args():
     :return: args. A argument namespace
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str, default='/home/luyuchen/project/luyuchen/data/celeba_hw4')
-    parser.add_argument('--out_dir', type=str, default='/home/luyuchen/scratch/result')
+    parser.add_argument('--data_path', type=str, default='./data')
+    parser.add_argument('--out_dir', type=str, default='./result')
+    parser.add_argument('--model_dir', type=str, default=None)
     parser.add_argument('--load_model', type=str, default=None,
                      help='model load path')
     parser.add_argument('--model_name', type=str, default='deconvolution')
@@ -153,8 +154,14 @@ if __name__ == '__main__':
         exit()
     os.mkdir(args.out_dir)
     result_path = os.path.join(args.out_dir, 'imgs')
-    model_path = os.path.join(args.out_dir, 'model')
+    if args.model_dir:
+        model_path = args.model_dir
+    else:
+        model_path = os.path.join(args.out_dir, 'model')
     os.makedirs(result_path)
+    if os.path.isdir(model_path):
+        print("{} exists!".format(model_path))
+        exit()
     os.makedirs(model_path)
 
     # load model
