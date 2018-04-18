@@ -19,7 +19,6 @@ def parse_args():
     parser.add_argument('--model_dir', type=str, default=None)
     parser.add_argument('--load_model', type=str, default=None,
                      help='model load path')
-    parser.add_argument('--evaluate', action='store_true', help='if turn on then only evaluate on test set')
     parser.add_argument('--model_name', type=str, default='deconvolution')
     parser.add_argument('--batch_size', type=int, default=128, help='batch size')
     parser.add_argument('--sample_size', type=int, default=36, help='sample size')
@@ -200,11 +199,6 @@ if __name__ == '__main__':
     # load data
     train_loader, test_loader = load_data(args)
 
-    # only evaluate the model
-    if args.evaluate:
-        test_bpp = eval_bpp(test_loader, model, args)
-        print("Test bpp: {:.2f}".format(test_bpp))
-        exit(0)
 
     # main loop
     prev_avg_test_loss = math.inf
@@ -243,6 +237,4 @@ if __name__ == '__main__':
     interpolate_samples(train_loader, model, args)
     interpolate_samples(test_loader, model, args, mode='test')
 
-    test_bpp = eval_bpp(test_loader, model, args)
-    print("Test bpp: {:.2f}".format(test_bpp))
 
