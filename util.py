@@ -143,16 +143,21 @@ def get_batch_bpp(model, imgs):
     from https://arxiv.org/pdf/1705.05263.pdf sec 2.4
     """
     D = np.prod([sh for sh in imgs.shape[1:]] )
-    num_samples = 100
-    # average 2000 result
+
+    # sample 2000 in total
+    # use a batch sample of 200 for 10 times
+    batch_samples = 200
     importance_sample_sum = 0
-    for _ in range(num_samples):
-        # log p(x,z)/q(z|x)
-        lower_bound = model.inference(imgs)[2]
-        importance_sample_sum += torch.exp(lower_bound)
+    for batch_idx in range(2000 / batch_samples):
+        # [bsz, batch_samples] log w
+        _, _, lower_bounds = model.importance_inference(imgs, k=batch_samples)
+        importance_sample_sum += torch.sum(torch.exp(lower_bounds))
+
+    # average over 2000 samples
+    importance_sample_avg = importance_sample_sum / (2000 / batch_samples)
 
     # [bsz]
-    LL = _log2(importance_sample_sum / num_samples)
+    LL = _log2(importance_sample_avg)
     return torch.mean(LL - D * math.log2(256))
 
 
