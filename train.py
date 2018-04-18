@@ -19,6 +19,7 @@ def parse_args():
     parser.add_argument('--model_dir', type=str, default=None)
     parser.add_argument('--load_model', type=str, default=None,
                      help='model load path')
+    parser.add_argument('--evaluate', action='store_true')
     parser.add_argument('--model_name', type=str, default='deconvolution')
     parser.add_argument('--batch_size', type=int, default=128, help='batch size')
     parser.add_argument('--sample_size', type=int, default=36, help='sample size')
@@ -100,6 +101,20 @@ def eval(data_loader, model, args):
 
     avg_loss = total_loss / (1+batch_idx)
     return avg_loss
+
+def eval_latent_space(data_loader, model, args, mode='train'):
+    model.eval()
+
+    for imgs, _ in data_loader:
+        imgs = Variable(imgs).cuda() if USE_CUDA else Variable(imgs)
+        imgs = imgs[:1]
+        break
+
+    reconst_interp_z = model.compute_change_in_z(imgs, 0, 1)
+    reconst_interp_z = torch.from_numpy(reconst_interp_z).cuda()
+
+    visualize(reconst_interp_z, im_name='z_space_{}.png'.format(mode), im_scale=1.0,
+              model_name=args.model_name, result_path=result_path)
 
 
 def eval_bpp(data_loader, model, args):
@@ -190,7 +205,9 @@ if __name__ == '__main__':
     # load model
     curr_lr = args.lr
     if args.load_model:
-        model, optimizer, args, epoch_i = load_checkpoint(args.load_model)
+        model, optimizer, new_args, epoch_i = load_checkpoint(args.load_model)
+        new_args.evaluate = args.evaluate
+        args = new_args
     else:
         model, optimizer = get_model_optimizer(args.operation, args.z_dim, curr_lr)
         model.apply(weight_init)
@@ -199,6 +216,12 @@ if __name__ == '__main__':
     # load data
     train_loader, test_loader = load_data(args)
 
+    if args.evaluate:
+        print('Qualitative Evaluations:')
+        eval_latent_space(train_loader, model, args)
+        interpolate_samples(train_loader, model, args)
+        interpolate_samples(test_loader, model, args, mode='test')
+        exit(0)
 
     # main loop
     prev_avg_test_loss = math.inf
