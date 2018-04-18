@@ -7,6 +7,6 @@ if [[ ${PWD} != */ImageGeneration-VAE ]]
 fi
 
 export PYTHONUNBUFFERED=1
-#PYTHON_BIN="/u/luyuchen/miniconda2/envs/pytorch3/bin/python" # change to yours
-PYTHON_BIN="/home/luyuchen/.conda/envs/pytorch/bin/python" # change to yours
-${PYTHON_BIN} train.py --data_path /home/luyuchen/project/luyuchen/data/celeba_hw4 --out_dir /home/luyuchen/scratch/result
+PYTHON_BIN="/u/luyuchen/miniconda2/envs/pytorch3/bin/python" # change to yours
+#PYTHON_BIN="/home/luyuchen/.conda/envs/pytorch/bin/python" # change to yours
+{PYTHON_BIN} train.py
