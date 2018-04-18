@@ -102,6 +102,16 @@ def eval(data_loader, model, args):
     avg_loss = total_loss / (1+batch_idx)
     return avg_loss
 
+def eval_latent_space(data_loader, model, args):
+    model.eval()
+
+    for imgs, _ in data_loader:
+        imgs = Variable(imgs).cuda() if USE_CUDA else Variable(imgs)
+        imgs = imgs[:sample_size]
+        break
+
+    model.compute_change_in_z(imgs, 0)
+
 
 def eval_bpp(data_loader, model, args):
     model.eval()
@@ -201,7 +211,13 @@ if __name__ == '__main__':
     train_loader, test_loader = load_data(args)
 
     # only evaluate the model
+    pdb.set_trace()
     if args.evaluate:
+        print('Qualitative Evaluations:')
+        eval_latent_space(train_loader, model, args)
+        interpolate_samples(train_loader, model, args)
+        interpolate_samples(test_loader, model, args, mode='test')
+        print('Evaluate BPP:')
         test_bpp = eval_bpp(test_loader, model, args)
         print("Test bpp: {:.2f}".format(test_bpp))
         exit(0)

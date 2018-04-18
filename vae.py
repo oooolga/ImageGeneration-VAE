@@ -98,7 +98,7 @@ class VAEBase(nn.Module):
         raise NotImplementedError
 
 
-    def importance_inference(self, imgs, k=50):
+    def importance_inference(self, imgs, k=5):
         """
         Perform an importance weighted lower bound estimate.
         return a monte carlo estimate of KL(q(z|x) | p(z)), monte carlo estimate of E_q(z|x) log p(x|z),
@@ -210,6 +210,29 @@ class VAEBase(nn.Module):
             reconstruct_img = np.concatenate((reconstruct_img, im_prime))
 
         return reconstruct_z_img, reconstruct_img
+
+    def compute_change_in_z(self, imgs, d_idx):
+        mean, logvar = self._encode(imgs)
+
+        eps = torch.FloatTensor(mean.shape)
+        eps.norm_()
+        if USE_CUDA:
+            eps = eps.cuda()
+        z = mean + eps * torch.exp(0.5*logvar)
+        z = z.view(z.size(0), self.z_dim, 1, 1)
+
+        img_size = list(imgs.size())
+        img_size[0] = 0
+        reconstruct_z_img = np.empty(img_size)
+        reconstruct_img = np.empty(img_size)
+
+        z_0 = z[0,:,:,:].unsqueeze(0)
+        im_0 = imgs[0,:,:,:].unsqueeze(0)
+
+        for alpha in np.linspace(-1.5,1.5,11):
+
+            pdb.set_trace()
+
 
 
 

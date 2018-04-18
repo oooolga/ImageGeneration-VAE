@@ -4,3 +4,5 @@ data/
 result/
 celeba_hw4.zip
 *.pyc
+model*
+result*
