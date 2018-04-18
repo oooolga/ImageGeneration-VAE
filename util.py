@@ -17,19 +17,24 @@ from transforms import Compose, TestTransform, TrainTransform
 import math
 ZERO = 1e-5 # for numeric stability
 
-def load_data(args):
-
-    train_transform = Compose([
-        TrainTransform(),
-    ])
-    train_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'train'),
-                                      transform=train_transform)
-    train_loader = torch.utils.data.DataLoader(train_dset,
-                                               batch_size=args.batch_size,
-                                               shuffle=True,
-                                               drop_last=True,
-                                               num_workers=4,
-                                               )
+def load_data(args, eval_only=False):
+    if not eval_only:
+        train_transform = Compose([
+            TrainTransform(),
+        ])
+        train_dset = datasets.ImageFolder(
+                root=os.path.join(args.data_path, 'train'),
+                transform=train_transform
+                )
+        train_loader = torch.utils.data.DataLoader(
+                train_dset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                drop_last=True,
+                num_workers=8,
+                )
+    else:
+        train_loader = None
 
     test_transform = Compose([
         TestTransform(),
@@ -40,7 +45,7 @@ def load_data(args):
                                               batch_size=args.batch_size,
                                               shuffle=False,
                                               drop_last=True,
-                                              num_workers=4
+                                              num_workers=8
                                               )
 
     print('Finished loading data...')
@@ -123,17 +128,31 @@ def get_batch_loss(model, imgs, k=0):
         mc_kl, mc_log_x_cond_z, lower_bounds = model.importance_inference(imgs, k)
         kl = torch.mean(mc_kl)
         reconst_loss = -torch.mean(mc_log_x_cond_z)
-
-        # bp_weights [bsz, k] and detach
-        bp_weights = F.softmax(lower_bounds, dim=1).detach()
-        # weighted average over lower bounds (log w)
-        weighted_lower_bounds = torch.mean(lower_bounds * bp_weights, dim=1)
-        loss = -torch.mean(weighted_lower_bounds)
+        # log(1/n(w_1+w_2+...+w_n))
+        # [bsz]
+        lower_bounds_avg = _logsumexp(lower_bounds) - math.log(lower_bounds.size(1))
+        loss = -torch.mean(lower_bounds_avg)
 
     return loss, kl, reconst_loss
 
 def _log2(x):
     return torch.log(x) / math.log(2.0)
+
+def _logsumexp(x):
+    """
+    doing an exp following a sum and a log.
+    :param x: [batch_size, num_samples]
+    :return: [batch_size]
+    """
+    # [batch_size, 1]
+    import ipdb
+    ipdb.set_trace()
+    max_logits = torch.max(x, dim=1, keepdim=True)[0]
+
+    # [batch_size]
+    sum_exp = torch.sum(torch.exp(x - max_logits), dim=1, keepdim=True)
+
+    return (max_logits + torch.log(sum_exp)).squeeze(1)
 
 def get_batch_bpp(model, imgs):
     """
@@ -147,18 +166,21 @@ def get_batch_bpp(model, imgs):
     # sample 2000 in total
     # use a batch sample of 200 for 10 times
     batch_samples = 200
-    importance_sample_sum = 0
-    for batch_idx in range(2000 / batch_samples):
+    lower_bounds = []
+    for batch_idx in range(1):
         # [bsz, batch_samples] log w
-        _, _, lower_bounds = model.importance_inference(imgs, k=batch_samples)
-        importance_sample_sum += torch.sum(torch.exp(lower_bounds))
+        _, _, batch_lower_bounds = model.importance_inference(imgs, k=batch_samples)
+        lower_bounds.append(batch_lower_bounds)
+    # [bsz, 2000]
+    lower_bounds = torch.cat(lower_bounds, dim=1)
 
     # average over 2000 samples
-    importance_sample_avg = importance_sample_sum / (2000 / batch_samples)
+    # log(mean(exp(lower_bounds))) [bsz]
+    importance_sample_avg = _logsumexp(lower_bounds) - math.log(2000)
 
-    # [bsz]
-    LL = _log2(importance_sample_avg)
-    return torch.mean(LL - D * math.log2(256))
+    # change base to log2
+    LL_2_base = importance_sample_avg / math.log(2)
+    return torch.mean(LL_2_base - D * math.log2(256))
 
 
 def save_checkpoint(state, model_name):

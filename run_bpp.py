@@ -13,9 +13,8 @@ def parse_args():
     parser.add_argument('--data_path', type=str, default='./data')
     parser.add_argument('--load_model', type=str, default=None,
                      help='model load path')
-    parser.add_argument('--model_name', type=str, default='deconvolution')
     parser.add_argument('--batch_size', type=int, default=128, help='batch size')
-    parser.add_argument('--print_freq', type=int, default=100,
+    parser.add_argument('--print_freq', type=int, default=1,
                     help='print frequency')
     return parser.parse_args()
 
