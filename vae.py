@@ -211,7 +211,7 @@ class VAEBase(nn.Module):
 
         return reconstruct_z_img, reconstruct_img
 
-    def compute_change_in_z(self, imgs, d_idx):
+    def compute_change_in_z(self, imgs, d_idx0, d_idx1):
         mean, logvar = self._encode(imgs)
 
         eps = torch.FloatTensor(mean.shape)
@@ -219,20 +219,27 @@ class VAEBase(nn.Module):
         eps = Variable(eps)
         if USE_CUDA:
             eps = eps.cuda()
-        z = mean + eps * torch.exp(0.5*logvar)
-        z = z.view(z.size(0), self.z_dim, 1, 1)
 
         img_size = list(imgs.size())
         img_size[0] = 0
         reconstruct_z_img = np.empty(img_size)
-        reconstruct_img = np.empty(img_size)
 
-        z_0 = z[0,:,:,:].unsqueeze(0)
-        im_0 = imgs[0,:,:,:].unsqueeze(0)
+        #z_0 = z[0,:,:,:].unsqueeze(0)
+        #im_0 = imgs[0,:,:,:].unsqueeze(0)
 
-        for alpha in np.linspace(-1.5,1.5,11):
+        for alpha in np.linspace(-3,3,11):
+            eps[:, d_idx0] = alpha
+            for beta in np.linspace(-3,3,11):
+                eps[:, d_idx1] = beta
 
-            pdb.set_trace()
+                z = mean + eps * torch.exp(0.5*logvar)
+                z = z.view(z.size(0), self.z_dim, 1, 1)
+
+                const = self.get_constructed_by_latent(z)
+                const = const.cpu().data.numpy()
+                reconstruct_z_img = np.concatenate((reconstruct_z_img, const))
+
+        return reconstruct_z_img
 
 
 

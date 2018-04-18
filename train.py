@@ -102,15 +102,19 @@ def eval(data_loader, model, args):
     avg_loss = total_loss / (1+batch_idx)
     return avg_loss
 
-def eval_latent_space(data_loader, model, args):
+def eval_latent_space(data_loader, model, args, mode='train'):
     model.eval()
 
     for imgs, _ in data_loader:
         imgs = Variable(imgs).cuda() if USE_CUDA else Variable(imgs)
         imgs = imgs[:1]
         break
-        
-    model.compute_change_in_z(imgs, 0)
+
+    reconst_interp_z = model.compute_change_in_z(imgs, 0, 1)
+    reconst_interp_z = torch.from_numpy(reconst_interp_z).cuda()
+
+    visualize(reconst_interp_z, im_name='z_space_{}.png'.format(mode), im_scale=1.0,
+              model_name=args.model_name, result_path=result_path)
 
 
 def eval_bpp(data_loader, model, args):
