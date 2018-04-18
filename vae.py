@@ -215,7 +215,8 @@ class VAEBase(nn.Module):
         mean, logvar = self._encode(imgs)
 
         eps = torch.FloatTensor(mean.shape)
-        eps.norm_()
+        eps.normal_()
+        eps = Variable(eps)
         if USE_CUDA:
             eps = eps.cuda()
         z = mean + eps * torch.exp(0.5*logvar)
