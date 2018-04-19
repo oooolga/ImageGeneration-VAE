@@ -145,8 +145,6 @@ def _logsumexp(x):
     :return: [batch_size]
     """
     # [batch_size, 1]
-    import ipdb
-    ipdb.set_trace()
     max_logits = torch.max(x, dim=1, keepdim=True)[0]
 
     # [batch_size]
@@ -170,7 +168,8 @@ def get_batch_bpp(model, imgs):
     for batch_idx in range(1):
         # [bsz, batch_samples] log w
         _, _, batch_lower_bounds = model.importance_inference(imgs, k=batch_samples)
-        lower_bounds.append(batch_lower_bounds)
+        # since we are doing pixel, we need to adjust for that
+        lower_bounds.append(batch_lower_bounds - math.log(D))
     # [bsz, 2000]
     lower_bounds = torch.cat(lower_bounds, dim=1)
 
