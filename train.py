@@ -203,10 +203,13 @@ if __name__ == '__main__':
     os.makedirs(model_path)
 
     # load model
+    start_epoch = 1
     curr_lr = args.lr
     if args.load_model:
         model, optimizer, new_args, epoch_i = load_checkpoint(args.load_model)
         new_args.evaluate = args.evaluate
+        start_epoch = new_args.epochs+1
+        new_args.epochs += args.epochs
         args = new_args
     else:
         model, optimizer = get_model_optimizer(args.operation, args.z_dim, curr_lr)
@@ -229,7 +232,7 @@ if __name__ == '__main__':
                          args.sample_size)
     sample_visualization(test_loader, model, 'epoch_0_test.png',
                          args.sample_size)
-    for epoch_i in range(1, args.epochs+1):
+    for epoch_i in range(start_epoch, args.epochs+1):
         print('|\tEpoch {}:'.format(epoch_i))
         print('|\t\tTrain:')
         avg_train_loss = train(train_loader, model, optimizer, args)
