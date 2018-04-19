@@ -21,9 +21,9 @@ def parse_args():
                      help='model load path')
     parser.add_argument('--evaluate', action='store_true')
     parser.add_argument('--model_name', type=str, default='deconvolution')
-    parser.add_argument('--batch_size', type=int, default=128, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=64, help='batch size')
     parser.add_argument('--sample_size', type=int, default=36, help='sample size')
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=20,
                     help='total epochs')
     parser.add_argument('--print_freq', type=int, default=100,
                     help='print frequency')
@@ -35,7 +35,7 @@ def parse_args():
                     help="if 0 then use pure inference else use importance weighted inference")
     parser.add_argument('--z_dim', type=int, default=100,
                     help="latent variable\'s dimension")
-    parser.add_argument('--lr', type=float, default=1e-4,
+    parser.add_argument('--lr', type=float, default=1e-3,
                     help='learning rate')
     return parser.parse_args()
 
@@ -248,11 +248,11 @@ if __name__ == '__main__':
         print('|\tTest loss={}\n'.format(avg_test_loss))
 
         # learning rate decrease if not much improvment
-        if (prev_avg_test_loss - avg_test_loss) / prev_avg_test_loss < 0.01:
-            curr_lr /= 2
-            print("decrease learning rate to {:.2f}".format(curr_lr))
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = curr_lr
+        #if (prev_avg_test_loss - avg_test_loss) / prev_avg_test_loss < 0.01:
+        #    curr_lr /= 2
+        #    print("decrease learning rate to {:.2f}".format(curr_lr))
+        #    for param_group in optimizer.param_groups:
+        #        param_group['lr'] = curr_lr
 
         if epoch_i % args.save_freq == 0:
             save_checkpoint({'epoch_i': epoch_i, 'args': args, 'state_dict': model.state_dict(),
