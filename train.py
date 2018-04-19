@@ -1,5 +1,5 @@
 import argparse
-from util import get_model_optimizer, load_data, print_all_settings, get_batch_loss, visualize, get_batch_bpp
+from util import get_model_optimizer, load_data, print_all_settings, get_batch_loss, visualize
 from util import save_checkpoint, load_checkpoint
 from vae import USE_CUDA
 from torch.autograd import Variable
@@ -115,31 +115,6 @@ def eval_latent_space(data_loader, model, args, mode='train'):
 
     visualize(reconst_interp_z, im_name='z_space_{}.png'.format(mode), im_scale=1.0,
               model_name=args.model_name, result_path=result_path)
-
-
-def eval_bpp(data_loader, model, args):
-    model.eval()
-    start = time.time()
-
-    total_bpp = 0
-    display_bpp = 0
-
-    for batch_idx, (imgs, _) in enumerate(data_loader):
-        imgs = Variable(imgs, volatile=True).cuda() if USE_CUDA else Variable(imgs)
-        batch_bpp = get_batch_bpp(model, imgs)
-        display_bpp += batch_bpp[0].data[0] / args.print_freq
-        total_bpp += batch_bpp[0].data[0]
-
-        if (batch_idx+1) % args.print_freq == 0:
-            print('|\t\tbatch #:{}\tloss={:.2f}\tkl={:.2f}\treconst_loss={:.2f}\tuse {:.2f} sec'.format(
-                batch_idx+1, display_loss, display_kl, display_reconst_loss, time.time()-start))
-            start = time.time()
-            display_loss = 0
-            display_kl = 0
-            display_reconst_loss = 0
-
-    avg_loss = total_bpp / (1+batch_idx)
-    return avg_loss
 
 
 def sample_visualization(data_loader, model, im_name, sample_size):
