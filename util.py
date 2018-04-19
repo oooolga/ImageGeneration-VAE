@@ -165,11 +165,10 @@ def get_batch_bpp(model, imgs):
     # use a batch sample of 200 for 10 times
     batch_samples = 200
     lower_bounds = []
-    for batch_idx in range(1):
+    for batch_idx in range(int(2000 / batch_samples)):
         # [bsz, batch_samples] log w
         _, _, batch_lower_bounds = model.importance_inference(imgs, k=batch_samples)
-        # since we are doing pixel, we need to adjust for that
-        lower_bounds.append(batch_lower_bounds - math.log(D))
+        lower_bounds.append(batch_lower_bounds)
     # [bsz, 2000]
     lower_bounds = torch.cat(lower_bounds, dim=1)
 
@@ -179,7 +178,7 @@ def get_batch_bpp(model, imgs):
 
     # change base to log2
     LL_2_base = importance_sample_avg / math.log(2)
-    return torch.mean(LL_2_base - D * math.log2(256))
+    return -torch.mean(LL_2_base - D*math.log2(256)) / float(D)
 
 
 def save_checkpoint(state, model_name):
