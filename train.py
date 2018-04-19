@@ -25,8 +25,6 @@ def parse_args():
     parser.add_argument('--sample_size', type=int, default=36, help='sample size')
     parser.add_argument('--epochs', type=int, default=10,
                     help='total epochs')
-    parser.add_argument('--start_epoch', type=int, default=1,
-                    help='start epoch')
     parser.add_argument('--print_freq', type=int, default=100,
                     help='print frequency')
     parser.add_argument('--save_freq', type=int, default=1,
@@ -205,11 +203,12 @@ if __name__ == '__main__':
     os.makedirs(model_path)
 
     # load model
+    start_epoch = 1
     curr_lr = args.lr
     if args.load_model:
         model, optimizer, new_args, epoch_i = load_checkpoint(args.load_model)
         new_args.evaluate = args.evaluate
-        new_args.start_epoch = new_args.epochs+1
+        start_epoch = new_args.epochs+1
         new_args.epochs += args.epochs
         args = new_args
     else:
@@ -233,7 +232,7 @@ if __name__ == '__main__':
                          args.sample_size)
     sample_visualization(test_loader, model, 'epoch_0_test.png',
                          args.sample_size)
-    for epoch_i in range(args.start_epoch, args.epochs+1):
+    for epoch_i in range(start_epoch, args.epochs+1):
         print('|\tEpoch {}:'.format(epoch_i))
         print('|\t\tTrain:')
         avg_train_loss = train(train_loader, model, optimizer, args)
