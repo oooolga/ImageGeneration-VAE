@@ -1,10 +1,14 @@
 import argparse
-from util import get_model_optimizer, load_data, print_all_settings, get_batch_loss, visualize, get_batch_bpp
+from util import get_model_optimizer, load_data, print_all_settings, get_batch_loss, visualize, bpp_per_img
 from util import save_checkpoint, load_checkpoint
 from vae import USE_CUDA
 from torch.autograd import Variable
 import time
 from tqdm import tqdm
+from transforms import Compose, TestTransform
+from torchvision import datasets
+import torch
+import os
 
 def parse_args():
     """
@@ -20,15 +24,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def eval_bpp(data_loader, model, args):
+def eval_bpp(data_loader, model):
     model.eval()
-    start = time.time()
-
     total_bpp = 0
 
     for batch_idx, (imgs, _) in tqdm(enumerate(data_loader)):
         imgs = Variable(imgs, volatile=True).cuda() if USE_CUDA else Variable(imgs)
-        batch_bpp = get_batch_bpp(model, imgs)
+        batch_bpp = bpp_per_img(model, imgs, 2000)
         total_bpp += batch_bpp[0].data[0]
 
     avg_bpp = total_bpp / (1+batch_idx)
@@ -40,7 +42,16 @@ if __name__ == '__main__':
 
     # load data and model
     model, _, _, epoch_i = load_checkpoint(args.load_model)
-    _, test_loader = load_data(args)
-
+    test_transform = Compose([
+        TestTransform(),
+    ])
+    test_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'test'),
+                                     transform=test_transform)
+    test_loader = torch.utils.data.DataLoader(test_dset,
+                                              batch_size=args.batch_size,
+                                              shuffle=False,
+                                              drop_last=True,
+                                              num_workers=8
+                                              )
     avg_bpp = eval_bpp(test_loader, model, args)
     print("test avg bpp {:.4f}".format(avg_bpp))
