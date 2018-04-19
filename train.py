@@ -207,6 +207,7 @@ if __name__ == '__main__':
     if args.load_model:
         model, optimizer, new_args, epoch_i = load_checkpoint(args.load_model)
         new_args.evaluate = args.evaluate
+        new_args.epochs = args.epochs
         args = new_args
     else:
         model, optimizer = get_model_optimizer(args.operation, args.z_dim, curr_lr)
