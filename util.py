@@ -61,7 +61,7 @@ def get_model_optimizer(mode, z_dim, lr):
     if USE_CUDA:
         model = model.cuda()
 
-    optimizer = optim.Adam(model.parameters(), lr)
+    optimizer = optim.Adam(model.parameters(), lr, betas=(0.5, 0.9))
     return model, optimizer
 
 

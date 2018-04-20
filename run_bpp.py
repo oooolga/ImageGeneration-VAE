@@ -18,7 +18,6 @@ def parse_args():
     parser.add_argument('--data_path', type=str, default='./data')
     parser.add_argument('--load_model', type=str, default=None,
                      help='model load path')
-    parser.add_argument('--batch_size', type=int, default=128, help='batch size')
     parser.add_argument('--print_freq', type=int, default=1,
                     help='print frequency')
     return parser.parse_args()
@@ -30,7 +29,7 @@ def eval_bpp(data_loader, model):
 
     for batch_idx, (imgs, _) in tqdm(enumerate(data_loader)):
         imgs = Variable(imgs, volatile=True).cuda() if USE_CUDA else Variable(imgs)
-        batch_bpp = bpp_per_img(model, imgs, 2000)
+        batch_bpp = bpp_per_img(model, imgs, 10)
         total_bpp += batch_bpp[0].data[0]
 
     avg_bpp = total_bpp / (1+batch_idx)
@@ -48,10 +47,10 @@ if __name__ == '__main__':
     test_dset = datasets.ImageFolder(root=os.path.join(args.data_path, 'test'),
                                      transform=test_transform)
     test_loader = torch.utils.data.DataLoader(test_dset,
-                                              batch_size=args.batch_size,
+                                              batch_size=1,
                                               shuffle=False,
                                               drop_last=True,
                                               num_workers=8
                                               )
-    avg_bpp = eval_bpp(test_loader, model, args)
+    avg_bpp = eval_bpp(test_loader, model)
     print("test avg bpp {:.4f}".format(avg_bpp))

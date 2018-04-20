@@ -35,7 +35,7 @@ def parse_args():
                     help="if 0 then use pure inference else use importance weighted inference")
     parser.add_argument('--z_dim', type=int, default=100,
                     help="latent variable\'s dimension")
-    parser.add_argument('--lr', type=float, default=1e-3,
+    parser.add_argument('--lr', type=float, default=1e-4,
                     help='learning rate')
     return parser.parse_args()
 
