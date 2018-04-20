@@ -152,35 +152,26 @@ def _logsumexp(x):
 
     return (max_logits + torch.log(sum_exp)).squeeze(1)
 
-def get_batch_bpp(model, imgs):
+def bpp_per_img(model, img, k):
     """
     :param model: the vae
-    :param imgs: [bsz, 3, 64, 64]
+    :param img: [1, 3, 64, 64]
+    :param k: the number sample of posterior
     :return: batch average bpp
     from https://arxiv.org/pdf/1705.05263.pdf sec 2.4
     """
-    D = np.prod([sh for sh in imgs.shape[1:]] )
+    D = np.prod([sh for sh in img.shape[1:]] )
 
-    # sample 2000 in total
-    # use a batch sample of 200 for 10 times
-    batch_samples = 200
-    lower_bounds = []
-    for batch_idx in range(1):
-        # [bsz, batch_samples] log w
-        _, _, batch_lower_bounds = model.importance_inference(imgs, k=batch_samples)
-        # since we are doing pixel, we need to adjust for that
-        lower_bounds.append(batch_lower_bounds - math.log(D))
-    # [bsz, 2000]
-    lower_bounds = torch.cat(lower_bounds, dim=1)
+    # [k, 3, 64, 64]
+    imgs = img.expand(k, img.size(1), img.size(2), img.size(3))
 
-    # average over 2000 samples
-    # log(mean(exp(lower_bounds))) [bsz]
-    importance_sample_avg = _logsumexp(lower_bounds) - math.log(2000)
+    # lower_bounds [k, 1]
+    _, _, lower_bounds = model.importance_inference(imgs, k)
+    importance_sample_avg = _logsumexp(lower_bounds) - math.log(k)
 
     # change base to log2
     LL_2_base = importance_sample_avg / math.log(2)
-    return torch.mean(LL_2_base - D * math.log2(256))
-
+    return -torch.mean(LL_2_base - D * math.log2(256)) / float(D)
 
 def save_checkpoint(state, model_name):
     torch.save(state, model_name)
