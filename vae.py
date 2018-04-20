@@ -227,9 +227,9 @@ class VAEBase(nn.Module):
         #z_0 = z[0,:,:,:].unsqueeze(0)
         #im_0 = imgs[0,:,:,:].unsqueeze(0)
 
-        for alpha in np.linspace(-3,3,11):
+        for alpha in np.linspace(-25,25,11):
             eps[:, d_idx0] = alpha
-            for beta in np.linspace(-3,3,11):
+            for beta in np.linspace(-25,25,11):
                 eps[:, d_idx1] = beta
 
                 z = mean + eps * torch.exp(0.5*logvar)
