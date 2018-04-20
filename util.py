@@ -165,9 +165,9 @@ def bpp_per_img(model, img, k):
     # [k, 3, 64, 64]
     imgs = img.expand(k, img.size(1), img.size(2), img.size(3))
 
-    # lower_bounds [k, 1]
-    _, _, lower_bounds = model.importance_inference(imgs, k)
-    importance_sample_avg = _logsumexp(lower_bounds) - math.log(k)
+    # lower_bounds [k]
+    lower_bounds = model.inference(imgs)[2]
+    importance_sample_avg = _logsumexp(lower_bounds.unsqueeze(0)) - math.log(k)
 
     # change base to log2
     LL_2_base = importance_sample_avg / math.log(2)

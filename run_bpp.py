@@ -29,7 +29,7 @@ def eval_bpp(data_loader, model):
 
     for batch_idx, (imgs, _) in tqdm(enumerate(data_loader)):
         imgs = Variable(imgs, volatile=True).cuda() if USE_CUDA else Variable(imgs)
-        batch_bpp = bpp_per_img(model, imgs, 10)
+        batch_bpp = bpp_per_img(model, imgs, 200)
         total_bpp += batch_bpp[0].data[0]
 
     avg_bpp = total_bpp / (1+batch_idx)
