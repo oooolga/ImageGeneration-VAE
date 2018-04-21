@@ -85,7 +85,7 @@ def eval(data_loader, model, args):
 
     for batch_idx, (imgs, _) in enumerate(data_loader):
         imgs = Variable(imgs, volatile=True).cuda() if USE_CUDA else Variable(imgs)
-        loss, kl, reconst_loss = get_batch_loss(model, imgs, args.k)
+        loss, kl, reconst_loss = get_batch_loss(model, imgs, 0)
         display_loss += loss[0].data[0] / args.print_freq
         display_kl += kl[0].data[0] / args.print_freq
         display_reconst_loss += reconst_loss[0].data[0] / args.print_freq
@@ -199,6 +199,9 @@ if __name__ == '__main__':
         eval_latent_space(train_loader, model, args)
         interpolate_samples(train_loader, model, args)
         interpolate_samples(test_loader, model, args, mode='test')
+        print('|\t\tEval test:')
+        avg_test_loss  = eval(test_loader, model, args)
+        print('|\tTest loss={}\n'.format(avg_test_loss))
         exit(0)
 
     # main loop
